@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>force_controller_core</name>
+  <version>0.0.1</version>
+  <description>Force Controller logic.</description>
+
+  <maintainer email="luca.lach@pal-robotics.com">llach</maintainer>
+
+  <license>BSD</license>
+
+  <author>Luca Lach</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+
+  <depend>controller_interface</depend>
+  <depend>joint_trajectory_controller</depend>
+  <depend>roscpp</depend>
+
+</package>
