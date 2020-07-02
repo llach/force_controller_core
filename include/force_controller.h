@@ -57,6 +57,11 @@ protected:
     bool init(hardware_interface::PositionJointInterface* hw, ros::NodeHandle& root_nh,
               ros::NodeHandle& controller_nh) override;
 
+    virtual void update_sensors() = 0;
+    virtual bool check_controller_transition() = 0;
+    virtual void publish_debug_info() = 0;
+    virtual void force_finished() = 0;
+
     std::string name_ = "force_controller";
 
     int num_sensors_ = 0;

@@ -183,14 +183,14 @@ namespace force_controller {
         // the
         // next control cycle, leaving the current cycle without a valid trajectory.
 
-        /*
-         * Update forces and sensor states.
-         */
-        sensors_->update();
+        // call child template class to update sensors
+        update_sensors();
 
         ROS_DEBUG_STREAM_NAMED(name_ + ".forces", "Forces: [" << (*forces_)[0] << ", " << (*forces_)[1] << "]");
 
-        // update sensor state
+        /*
+         * Update forces and sensor states.
+         */
         RealtimeGoalHandlePtr current_active_goal(rt_active_goal_);
         if (current_active_goal) {
             for (int j = 0; j < forces_->size(); j++) {
@@ -228,8 +228,7 @@ namespace force_controller {
                 // if the transition was detected last time, we enter force_control from here onwards
                 c_state_ = FORCE_CTRL;
             } else if (c_state_ == TRAJECTORY_EXEC) {
-                if (std::all_of(sensor_states_.begin(), sensor_states_.end(),
-                                [](SENSOR_STATE s) { return s > LOST_CONTACT; })) { // todo
+                if (check_controller_transition()) { // handled in child
                     ROS_INFO_NAMED(name_, "Controller state transition!");
                     c_state_ = TRANSITION;
                 }
@@ -373,23 +372,6 @@ namespace force_controller {
             }
         }
 
-        if (c_state_ > TRANSITION) { // todo
-            ROS_DEBUG_NAMED(name_ + "hook", "\nk:  [%.6f, %.6f]\ndF: [%.6f, %.6f]\ndp: [%.6f, %.6f]\ncp: [%.6f, %.6f]\nnp: [%.6f, %.6f]",
-                            (*k_)[0], (*k_)[1],
-                            (*delta_F_)[0], (*delta_F_)[1],
-                            (*delta_p_)[0], (*delta_p_)[1],
-                            current_state_.position[0], current_state_.position[1],
-                            desired_state_.position[0], desired_state_.position[1]);
-            kd45_controller::KD45Debug dbg_msg = kd45_controller::KD45Debug();
-            dbg_msg.k = {(*k_)[0], (*k_)[1]};
-            dbg_msg.delta_F = {(*delta_F_)[0], (*delta_F_)[1]};
-            dbg_msg.delta_p = {(*delta_p_)[0], (*delta_p_)[1]};
-            dbg_msg.cur_p = {current_state_.position[0], current_state_.position[1]};
-            dbg_msg.new_p = {desired_state_.position[0], desired_state_.position[1]};
-            dbg_msg.tra_p = {(*pos_T_)[0], (*pos_T_)[1]};
-//            debug_pub_.publish(dbg_msg);
-        }
-
         // If there is an active goal and all segments finished successfully then set goal as succeeded
         // current_active_goal is reused from above the state update
         if (current_active_goal && current_active_goal->preallocated_result_ &&
@@ -405,8 +387,9 @@ namespace force_controller {
             for (int l = 0; l < joints_.size(); l++){
                 if ((*forces_)[l] < (*max_forces_)[l]) finished = false;
             }
-            if (finished) { // todo
+            if (finished) {
                 ROS_INFO_NAMED(name_, "Trajectory execution succeeded (MF)");
+                force_finished();
                 current_active_goal->preallocated_result_->error_code = control_msgs::FollowJointTrajectoryResult::SUCCESSFUL;
                 current_active_goal->setSucceeded(current_active_goal->preallocated_result_);
                 rt_active_goal_.reset();
