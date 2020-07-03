@@ -1,0 +1,153 @@
+\documentclass{standalone}
+
+\usepackage[scaled]{helvet}
+\usepackage[T1]{fontenc}
+\renewcommand\familydefault{\sfdefault}
+
+
+\usepackage[]{algorithm2e}
+\SetArgSty{textnormal}
+\usepackage{amsmath}
+\usepackage[dvipsnames]{xcolor}
+
+\newcommand{\force}{\mathbf{f}}
+\newcommand{\fit}{\force_{i, t}}
+\newcommand{\fitdes}{\force_{\text{des}_{i, t}}}
+\newcommand{\fitmax}{\force_{\text{max}_i}}
+\newcommand{\fitz}{\force_{i, 0}}
+\newcommand{\fitm}{\force_{i, t-1}}
+\newcommand{\fitrans}{\force_{i, T}}
+\newcommand{\dfit}{\Delta\fit}
+
+\newcommand{\joint}{\mathbf{j}}
+\newcommand{\jit}{\joint_{i, t}}
+\newcommand{\jitdes}{\joint_{\text{des}_{i, t}}}
+\newcommand{\jitm}{\joint_{i, t-1}}
+\newcommand{\jitz}{\joint_{i, 0}}
+\newcommand{\jitrans}{\joint_{i, T}}
+\newcommand{\djit}{\Delta\jit}
+
+\newcommand{\fconst}{k}
+\newcommand{\kit}{\fconst_{i, t}}
+\newcommand{\kitm}{\fconst_{i, t-1}}
+
+\newcommand{\kbar}{\bar{\fconst}}
+\newcommand{\kbit}{\kbar_{i, t}}
+\newcommand{\kbitm}{\kbar_{i, t-1}}
+\newcommand{\kbitz}{\kbar_{i, 0}}
+
+\newcommand{\cs}{\mathbf{C}}
+\newcommand{\cf}{F_{t_i}}
+\newcommand{\nt}{\epsilon}
+\newcommand{\jti}{\mathbf{t}_{i, t}}
+\newcommand{\jtiz}{\mathbf{t}_{i, 0}}
+\newcommand{\jsi}{S_i}
+
+\newcommand{\js}{\mathbf{s}}
+\newcommand{\jsit}{\js_{i, t}}
+\newcommand{\jsitm}{\js_{i, t-1}}
+
+\newcommand{\fT}{F_{{T}_i}}
+\newcommand{\pT}{p_{{T}_i}}
+
+\newcommand{\comm}[1]{{\color{OliveGreen} // #1} \\}
+\newcommand{\genf}[1]{{\color{RubineRed} \textbf{#1}}}
+\newcommand{\gsucc}{{\color{Cyan} \textbf{goal\_succeeded()\;}}}
+
+
+\begin{document}
+\begin{algorithm}[H]
+	\textbf{init()}  \\
+	\vspace{0.1cm}
+	\hspace{0.5cm} - controller state $\cs = $ \textbf{TRAJ} \\
+	\hspace{0.5cm} - number of joints $J$ \\
+	\hspace{0.5cm} - noise threshold $\nt$ \\
+	\hspace{0.5cm} - joint times $\jtiz = 0\,\, \forall i\in J$ \\
+	\hspace{0.5cm} - joint states $\jitz = \text{NO\_CONTACT}\,\, \forall i\in J$ \\
+	\hspace{0.5cm} -  forces $\fitz$ s $ \fitm = 0\,\, \forall i\in J$ \\
+	
+	\hspace{0.5cm} - feather constant estimator $\kbitz = 0\,\, \forall i\in J$ \\
+	\vspace{0.2cm}
+	\textbf{update}(Period $p$) \\
+	\vspace{0.1cm}
+	\genf{update\_sensors()\;}
+	\vspace{0.1cm}
+	\comm{update joint states \& timing}
+	\For{$i$ in $[0...J-1]$}{
+		\uIf{$\fitm \leq \nt$ \textbf{\&\&} $\fit > \nt$}{
+			$\jsit = $ GOT\_CONTACT
+		}
+		\uElseIf{$\fitm > \nt$ \textbf{\&\&} $\fit \leq \nt$}{
+			$\jsit = $ LOST\_CONTACT
+		}
+		\uElseIf{$\fitm > \nt $ \textbf{\&\&} $\fit > \nt$}{
+			$\jsit = $ IN\_CONTACT
+		}
+		\Else{
+			$\jsit = $ NO\_CONTACT
+		}
+		\vspace{0.2cm}
+		\uIf{$\jsit == $ NO\_CONTACT \textbf{||} $\jsit == $ LOST\_CONTACT}{
+			$\jti \leftarrow {\jti} + p$
+		}
+	}
+	\vspace{0.2cm}
+	\comm{update controller state}
+	\uIf{$\cs == $ \textbf{TRANS}}{
+		$\cs = $ \textbf{F\_CTRL}
+	}
+	\uElseIf{$\cs == $ \textbf{TRAJ}}{
+		\uIf{\genf{check\_controller\_transition()}}{
+			$\cs = $ \textbf{TRANS}\\
+			\For{$i$ in $[0, J-1]$} {
+				$\fitrans \leftarrow \fit$\\
+				$\jitrans \leftarrow \jit$
+			}
+		}			
+	}
+	\vspace{0.2cm}
+	\comm{joint position calculations}
+	\For{$i$ in $[0, J-1]$} {
+		\uIf{$\cs == $ \textbf{TRAJ} \textbf{||} $\cs == $ \textbf{TRANS} }{
+			$\jitdes \leftarrow $ \textbf{sample\_trajectory\_for\_joint}(Joint $i$, Time $\jti$)
+		}	
+		\Else{
+			\comm{calculate new deltas, estimate $\kbar$ and calculate new $\jitdes$}
+			\textbf{TIAGo}\\
+			\begin{gather*}
+			\dfit = \fit - \fitrans \\
+			\djit = \jit - \jitrans \\[10pt]
+			\kit = \frac{\fit}{\jit} \\
+			\kbit = (1-\lambda)\kit + \lambda \kbit \\[10pt]
+			\fitdes = 1.1 * \fitmax - \fit \\ 
+			\jitdes = \frac{\fitdes}{\kbit} + \jit
+			\end{gather*}
+			\textbf{Shadow}
+			\begin{align}
+			-
+			\end{align}
+		}
+	}
+	\vspace{0.2cm}
+	\genf{publish\_debug\_info()\;}
+	\vspace{0.2cm}
+	\uIf{$\cs == $ \textbf{TRAJ}}{
+		\uIf{last Segment successfully executed}{
+			\gsucc
+		}
+	} \Else{
+		\uIf{$\fit \geq \fitmax \forall i \in [0,J-1]$}{
+			\genf{force\_finished()\;}
+			\gsucc
+		}
+	}
+	\vspace{0.2cm}
+	\comm{store data for next loop}
+	\For{$i$ in $[0, J-1]$} {
+		$\fitm \leftarrow \fit$ \\
+		$\jsitm \leftarrow \jsit$
+	}
+	
+	\caption{Platform-Independent Force Controller }
+\end{algorithm}
+\end{document}
