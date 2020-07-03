@@ -197,7 +197,7 @@ namespace force_controller {
                 auto &force = (*forces_)[j];
                 auto &last_force = (*last_forces_)[j];
                 auto &state = sensor_states_[j];
-                auto &last_state = last_sensor_states_[j];
+                auto &last_state = last_sensor_states_[j]; // debug purposes only, not used in logic
                 auto &joint_time = joint_times_[j];
 
                 if (last_force <= NOISE_THRESH && force > NOISE_THRESH) {
@@ -231,18 +231,14 @@ namespace force_controller {
                 if (check_controller_transition()) { // handled in child
                     ROS_INFO_NAMED(name_, "Controller state transition!");
                     c_state_ = TRANSITION;
+
+                    // Store reference data.
+                    for (int j = 0; j < forces_->size(); j++){
+                        (*forces_T_)[j] = (*forces_)[j];
+                        (*pos_T_)[j] = current_state_.position[j];
+                    }
                 }
                 // if we were to revert back to trajectory mode, here is the place to do so
-            }
-        }
-
-        /*
-         * Store reference data.
-         */
-        if (c_state_ == TRANSITION) {
-            for (int j = 0; j < forces_->size(); j++){
-                (*forces_T_)[j] = (*forces_)[j];
-                (*pos_T_)[j] = current_state_.position[j];
             }
         }
 
@@ -269,7 +265,7 @@ namespace force_controller {
                  */
                 (*delta_F_)[i] = (*forces_)[i] - (*forces_T_)[i];
                 (*delta_p_)[i] = current_state_.position[i] - (*pos_T_)[i];
-                float p_des_ = (*pos_T_)[i];
+                float p_des_ = (*pos_T_)[i]; //?
 
                 /*
                  * Update k and command
@@ -371,6 +367,8 @@ namespace force_controller {
                 }
             }
         }
+
+        publish_debug_info();
 
         // If there is an active goal and all segments finished successfully then set goal as succeeded
         // current_active_goal is reused from above the state update
