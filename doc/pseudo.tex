@@ -123,9 +123,13 @@
 			\jitdes = \frac{\fitdes}{\kbit} + \jit
 			\end{gather*}
 			\textbf{Shadow}
-			\begin{align}
-			-
-			\end{align}
+			\begin{gather*}
+			\djit = \jit - \jitrans \\[10pt]
+			\kit = \frac{\fit}{\djit} \\
+			\kbit = (1-\lambda)\kit + \lambda \kbit \\[10pt]
+			\fitdes =\fitmax - \fit \\
+			\jitdes = \frac{\fitdes}{\kbit} + \jit
+			\end{gather*}
 		}
 	}
 	\vspace{0.2cm}
