@@ -248,17 +248,7 @@ namespace force_controller {
             // There's no acceleration data available in a joint handle
 
             typename TrajectoryPerJoint::const_iterator segment_it;
-            if (c_state_ <= TRANSITION) {
-                segment_it =
-                        sample(curr_traj[i], joint_times_[i].toSec(), desired_joint_state_);
-                if (curr_traj[i].end() == segment_it) {
-                    // Non-realtime safe, but should never happen under normal operation
-                    ROS_ERROR_NAMED(
-                            name_,
-                            "Unexpected error: No trajectory defined at current time. Please contact the package maintainer.");
-                    return;
-                }
-            } else {
+            if (c_state_ > TRANSITION && (*forces_)[i] > NOISE_THRESH) {
                 /*
                  * Calculate new deltas
                  */
@@ -278,12 +268,21 @@ namespace force_controller {
                     float newF = ((*max_forces_)[i]*1.1 - (*forces_)[i]);
                     p_des_ = (newF/ (*k_)[i]) + current_state_.position[i];
                     std::cout << p_des_ << std::endl;
-                } else {
-//                    std::cout << "dF 0!" << std::endl;
-                }
+                } else {}
 
                 desired_joint_state_.position[0] = p_des_;
                 desired_joint_state_.velocity[0] = current_state_.velocity[i];
+
+            } else {
+                segment_it =
+                        sample(curr_traj[i], joint_times_[i].toSec(), desired_joint_state_);
+                if (curr_traj[i].end() == segment_it) {
+                    // Non-realtime safe, but should never happen under normal operation
+                    ROS_ERROR_NAMED(
+                            name_,
+                            "Unexpected error: No trajectory defined at current time. Please contact the package maintainer.");
+                    return;
+                }
             }
 
             desired_state_.position[i] = desired_joint_state_.position[0];
