@@ -65,6 +65,7 @@ protected:
     std::string name_ = "force_controller";
 
     int num_sensors_ = 0;
+    bool realtime_busy_ = false;
 
     typedef std::shared_ptr<TactileSensors> TactileSensorsPtr;
     TactileSensorsPtr sensors_;
