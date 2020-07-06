@@ -60,7 +60,7 @@ protected:
     virtual void update_sensors() = 0;
     virtual bool check_controller_transition() = 0;
     virtual void publish_debug_info() = 0;
-    virtual void force_finished() = 0;
+    virtual bool check_finished() = 0;
 
     std::string name_ = "force_controller";
 

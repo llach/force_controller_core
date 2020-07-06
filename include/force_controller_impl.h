@@ -267,7 +267,6 @@ namespace force_controller {
 
                     float newF = ((*max_forces_)[i]*1.1 - (*forces_)[i]);
                     p_des_ = (newF/ (*k_)[i]) + current_state_.position[i];
-                    std::cout << p_des_ << std::endl;
                 } else {}
 
                 desired_joint_state_.position[0] = p_des_;
@@ -379,13 +378,8 @@ namespace force_controller {
             successful_joint_traj_.reset();
             c_state_ = TRAJECTORY_EXEC;
         } else if (current_active_goal && current_active_goal->preallocated_result_) {
-            bool finished = true;
-            for (int l = 0; l < joints_.size(); l++){
-                if ((*forces_)[l] < (*max_forces_)[l]) finished = false;
-            }
-            if (finished) {
+            if (check_finished()) {
                 ROS_INFO_NAMED(name_, "Trajectory execution succeeded (MF)");
-                force_finished();
                 current_active_goal->preallocated_result_->error_code = control_msgs::FollowJointTrajectoryResult::SUCCESSFUL;
                 current_active_goal->setSucceeded(current_active_goal->preallocated_result_);
                 rt_active_goal_.reset();
