@@ -45,9 +45,9 @@ namespace force_controller {
     inline bool ForceTrajectoryController<TactileSensors>::init(hardware_interface::PositionJointInterface* hw,
                                                                ros::NodeHandle& root_nh, ros::NodeHandle& controller_nh) {
         ROS_INFO_NAMED(name_, "FTC init");
-        if (num_sensors_ == 0) {
-            throw std::runtime_error("Number of sensors must be > 0!");
-        }
+
+        bool ret = JointTrajectoryController::init(hw, root_nh, controller_nh);
+        num_sensors_ = joints_.size();
 
         forces_= std::make_shared<std::vector<float>>(num_sensors_, 0.0);
         last_forces_= std::make_shared<std::vector<float>>(num_sensors_, 0.0);
@@ -68,7 +68,6 @@ namespace force_controller {
 
         sensors_ = std::make_shared<TactileSensors>(root_nh, forces_);
 
-        bool ret = JointTrajectoryController::init(hw, root_nh, controller_nh);
         return ret;
     }
 
@@ -280,7 +279,7 @@ namespace force_controller {
                     p_des_ = (newF/ (*k_)[i]) + current_state_.position[i];
                     std::cout << p_des_ << std::endl;
                 } else {
-                    std::cout << "dF 0!" << std::endl;
+//                    std::cout << "dF 0!" << std::endl;
                 }
 
                 desired_joint_state_.position[0] = p_des_;
