@@ -36,3 +36,8 @@ using force_controller::ForceTrajectoryController<TactileSensors>::last_sensor_s
 using force_controller::ForceTrajectoryController<TactileSensors>::m_statestring_;
 
 using force_controller::ForceTrajectoryController<TactileSensors>::c_state_;
+
+using force_controller::ForceTrajectoryController<TactileSensors>::joint_names_;
+using force_controller::ForceTrajectoryController<TactileSensors>::joints_;
+
+using force_controller::ForceTrajectoryController<TactileSensors>::curr_time_;

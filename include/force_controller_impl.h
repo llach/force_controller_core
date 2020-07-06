@@ -173,6 +173,8 @@ namespace force_controller {
         time_data.uptime = time_data_.readFromRT()->uptime + period;  // Update controller uptime
         time_data_.writeFromNonRT(time_data);  // TODO: Grrr, we need a lock-free data structure here!
 
+        curr_time_ = time;
+
         // NOTE: It is very important to execute the two above code blocks in the specified sequence: first get current
         // trajectory, then update time data. Hopefully the following paragraph sheds a bit of light on the rationale.
         // The non-rt thread responsible for processing new commands enqueues trajectories that can start at the _next_
@@ -380,6 +382,31 @@ namespace force_controller {
         } else if (current_active_goal && current_active_goal->preallocated_result_) {
             if (check_finished()) {
                 ROS_INFO_NAMED(name_, "Trajectory execution succeeded (MF)");
+
+                for (unsigned int i = 0; i < joints_.size(); ++i) {
+                    desired_state_.position[i] = current_state_.position[i];
+                    desired_state_.velocity[i] = current_state_.velocity[i];
+                    desired_state_.acceleration[i] = current_state_.acceleration[i];
+
+                    state_joint_error_.position[0] = 0.0;
+                    state_joint_error_.velocity[0] = 0.0;
+                    state_joint_error_.acceleration[0] = 0.0;
+
+                    state_error_.position[i] = 0.0;
+                    state_error_.velocity[i] = 0.0;
+                    state_error_.acceleration[i] = 0.0;
+                }
+
+                current_active_goal->preallocated_feedback_->header.stamp = time_data_.readFromRT()->time;
+                current_active_goal->preallocated_feedback_->desired.positions = desired_state_.position;
+                current_active_goal->preallocated_feedback_->desired.velocities = desired_state_.velocity;
+                current_active_goal->preallocated_feedback_->desired.accelerations = desired_state_.acceleration;
+                current_active_goal->preallocated_feedback_->actual.positions = current_state_.position;
+                current_active_goal->preallocated_feedback_->actual.velocities = current_state_.velocity;
+                current_active_goal->preallocated_feedback_->error.positions = state_error_.position;
+                current_active_goal->preallocated_feedback_->error.velocities = state_error_.velocity;
+                current_active_goal->setFeedback(current_active_goal->preallocated_feedback_);
+
                 current_active_goal->preallocated_result_->error_code = control_msgs::FollowJointTrajectoryResult::SUCCESSFUL;
                 current_active_goal->setSucceeded(current_active_goal->preallocated_result_);
                 rt_active_goal_.reset();

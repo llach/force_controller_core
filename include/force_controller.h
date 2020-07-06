@@ -67,6 +67,8 @@ protected:
     int num_sensors_ = 0;
     bool realtime_busy_ = false;
 
+    ros::Time curr_time_;
+
     typedef std::shared_ptr<TactileSensors> TactileSensorsPtr;
     TactileSensorsPtr sensors_;
 
