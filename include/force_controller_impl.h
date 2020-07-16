@@ -218,7 +218,7 @@ namespace force_controller {
                 }
 
                 if (state != last_state) {
-                    ROS_INFO_NAMED(name_ + ".sensorStateChange",
+                    ROS_DEBUG_NAMED(name_ + ".sensorStateChange",
                                    "Sensor %d's state changed from %s to %s. f_t-1 %.4f, f_t %.4f", j,
                                    m_statestring_[last_state].c_str(), m_statestring_[state].c_str(), last_force, force);
                 }
