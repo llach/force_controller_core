@@ -113,16 +113,6 @@
 		}	
 		\Else{
 			\comm{calculate new deltas, estimate $\kbar$ and calculate new $\jitdes$}
-			\textbf{TIAGo}\\
-			\begin{gather*}
-			\dfit = \fit - \fitrans \\
-			\djit = \jit - \jitrans \\[10pt]
-			\kit = \frac{\fit}{\jit} \\
-			\kbit = (1-\lambda)\kit + \lambda \kbit \\[10pt]
-			\fitdes = 1.1 * \fitmax - \fit \\ 
-			\jitdes = \frac{\fitdes}{\kbit} + \jit
-			\end{gather*}
-			\textbf{Shadow}
 			\begin{gather*}
 			\djit = \jit - \jitrans \\[10pt]
 			\kit = \frac{\fit}{\djit} \\
