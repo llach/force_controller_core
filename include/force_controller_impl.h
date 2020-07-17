@@ -230,7 +230,7 @@ namespace force_controller {
                 c_state_ = FORCE_CTRL;
             } else if (c_state_ == TRAJECTORY_EXEC) {
                 if (check_controller_transition()) { // handled in child
-                    ROS_INFO_NAMED(name_, "Controller state transition!");
+                    ROS_INFO_NAMED(name_, "C TRANSITION!");
                     c_state_ = TRANSITION;
 
                     // Store reference data.
@@ -251,25 +251,21 @@ namespace force_controller {
 
             typename TrajectoryPerJoint::const_iterator segment_it;
             if (c_state_ > TRANSITION && (*forces_)[i] > NOISE_THRESH) {
-                /*
-                 * Calculate new deltas
-                 */
-                (*delta_F_)[i] = (*forces_)[i] - (*forces_T_)[i];
-                (*delta_p_)[i] = current_state_.position[i] - (*pos_T_)[i];
-                float p_des_ = (*pos_T_)[i]; //?
+                double delta_p = current_state_.position[i] - (*pos_T_)[i];
+                double k_bar_t = (*forces_)[i] / delta_p;
 
-                /*
-                 * Update k and command
-                 */
-                if ((*delta_F_)[i] != 0){ // we don't want any infs
-                    float kt = (*forces_)[i] / (*delta_p_)[i];
-                    if (!std::isinf(kt)){  // we don't want any infs .. again
-                        (*k_)[i] = (1-lambda_)*kt + lambda_*(*k_)[i];
-                    }
+                if (!std::isinf(k_bar_t)){
+                    (*k_)[i] = (1-lambda_)*k_bar_t + lambda_*(*k_)[i];
+                } else {
+                    k_bar_t = 0.0;
+                }
 
-                    float newF = ((*max_forces_)[i]*1.1 - (*forces_)[i]);
-                    p_des_ = (newF/ (*k_)[i]) + current_state_.position[i];
-                } else {}
+                // if joint is at max force, we set it to hold the current position
+                double f_des = (*max_forces_)[i] - (*forces_)[i];
+                double p_des_ = (f_des / (*k_)[i]) + current_state_.position[i];
+//                if (newF < goal_joint_forces_[i]){
+//                    p_des_ += (newF/ k_bar_[i]);
+//                }
 
                 desired_joint_state_.position[0] = p_des_;
                 desired_joint_state_.velocity[0] = current_state_.velocity[i];
@@ -381,7 +377,7 @@ namespace force_controller {
             c_state_ = TRAJECTORY_EXEC;
         } else if (current_active_goal && current_active_goal->preallocated_result_) {
             if (check_finished()) {
-                ROS_INFO_NAMED(name_, "Trajectory execution succeeded (MF)");
+                ROS_INFO_NAMED(name_, "Force control succeeded");
 
                 for (unsigned int i = 0; i < joints_.size(); ++i) {
                     desired_state_.position[i] = current_state_.position[i];
