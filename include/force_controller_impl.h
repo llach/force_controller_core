@@ -243,7 +243,7 @@ namespace force_controller {
             }
         }
 
-        // Update current state and state error
+        // Update desired state and state error
         for (unsigned int i = 0; i < joints_.size(); ++i) {
             current_state_.position[i] = joints_[i].getPosition();
             current_state_.velocity[i] = joints_[i].getVelocity();
@@ -263,6 +263,11 @@ namespace force_controller {
                 // if joint is at max force, we set it to hold the current position
                 double f_des = (*max_forces_)[i] - (*forces_)[i];
                 double p_des_ = (f_des / (*k_)[i]) + current_state_.position[i];
+
+                // store debug info
+                (*delta_F_)[i] = f_des;
+                (*delta_p_)[i] = delta_p;
+
 //                if (newF < goal_joint_forces_[i]){
 //                    p_des_ += (newF/ k_bar_[i]);
 //                }
