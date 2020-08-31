@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>force_controller_core</name>
-  <version>0.0.1</version>
+  <version>0.0.2</version>
   <description>Force Controller logic.</description>
 
   <maintainer email="luca.lach@pal-robotics.com">llach</maintainer>

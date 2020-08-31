@@ -110,6 +110,6 @@ protected:
 };
 }
 
-#include <force_controller_impl.h>
+#include "force_controller_impl.h"
 
 #endif //FORCE_CONTROLLER_CORE_FORCE_CONTROLLER_H
