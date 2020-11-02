@@ -8,6 +8,8 @@ using force_controller::ForceTrajectoryController<TactileSensors>::NO_CONTACT;
 using force_controller::ForceTrajectoryController<TactileSensors>::LOST_CONTACT;
 using force_controller::ForceTrajectoryController<TactileSensors>::GOT_CONTACT;
 using force_controller::ForceTrajectoryController<TactileSensors>::IN_CONTACT;
+using force_controller::ForceTrajectoryController<TactileSensors>::GOAL;
+using force_controller::ForceTrajectoryController<TactileSensors>::VIOLATED;
 
 using force_controller::ForceTrajectoryController<TactileSensors>::sensors_;
 

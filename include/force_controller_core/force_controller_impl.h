@@ -64,7 +64,15 @@ namespace force_controller {
 
         c_state_ = TRAJECTORY_EXEC;
 
-        joint_times_.resize(num_sensors_);
+      ROS_INFO_NAMED(name_, "reloading action server ...");
+      // ROS API: Action interface
+      action_server_.reset(new ActionServer(controller_nh_, "follow_joint_trajectory",
+                                            boost::bind(&ForceTrajectoryController::goalCB,   this, _1),
+                                            boost::bind(&ForceTrajectoryController::cancelCB, this, _1),
+                                            false));
+      action_server_->start();
+
+      joint_times_.resize(num_sensors_);
 
         sensors_ = std::make_shared<TactileSensors>(root_nh, forces_);
 
@@ -72,8 +80,14 @@ namespace force_controller {
     }
 
     template <class TactileSensors>
+    inline void ForceTrajectoryController<TactileSensors>::cancelCB(GoalHandle gh) {
+      ROS_INFO_NAMED(name_, "Canceling action goal");
+      JointTrajectoryController::cancelCB(gh);
+    }
+
+    template <class TactileSensors>
     inline void ForceTrajectoryController<TactileSensors>::goalCB(GoalHandle gh) {
-        ROS_INFO_STREAM_NAMED(name_, "Received new action goal");
+        ROS_INFO_NAMED(name_, "Received new action goal");
 
         // Precondition: Running controller
         if (!this->isRunning()) {
@@ -126,28 +140,8 @@ namespace force_controller {
                     controller_nh_.createTimer(action_monitor_period_, &RealtimeGoalHandle::runNonRealtime, rt_goal);
             goal_handle_timer_.start();
 
-            /*
-             * Reset controller / joint states & joint times
-             */
-            ROS_INFO_NAMED(name_, "Resetting controller and sensor states");
-            c_state_ = TRAJECTORY_EXEC;
-            sensor_states_ = std::vector<SENSOR_STATE>(num_sensors_, SENSOR_STATE::NO_CONTACT);
-            last_sensor_states_ = std::vector<SENSOR_STATE>(num_sensors_, SENSOR_STATE::NO_CONTACT);
+            reset_parameters();
 
-            k_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-            forces_T_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-            pos_T_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-
-            delta_F_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-            delta_p_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-
-            for (int j = 0; j < forces_->size(); j++){
-                (*last_forces_)[j] = 0.0;
-                (*forces_)[j] = 0.0;
-            }
-
-            for (auto &t : joint_times_)
-                t = time_data_.readFromRT()->uptime;
         } else {
             // Reject invalid goal
             control_msgs::FollowJointTrajectoryResult result;
@@ -155,6 +149,32 @@ namespace force_controller {
             result.error_string = error_string;
             gh.setRejected(result);
         }
+    }
+
+    template <class TactileSensors>
+    inline void ForceTrajectoryController<TactileSensors>::reset_parameters(){
+    /*
+     * Reset controller / joint states & joint times
+     */
+      ROS_INFO_NAMED(name_, "Resetting controller and sensor states");
+      c_state_ = TRAJECTORY_EXEC;
+      sensor_states_ = std::vector<SENSOR_STATE>(num_sensors_, SENSOR_STATE::NO_CONTACT);
+      last_sensor_states_ = std::vector<SENSOR_STATE>(num_sensors_, SENSOR_STATE::NO_CONTACT);
+
+      k_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+      forces_T_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+      pos_T_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+
+      delta_F_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+      delta_p_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+
+      for (int j = 0; j < forces_->size(); j++){
+        (*last_forces_)[j] = 0.0;
+        (*forces_)[j] = 0.0;
+      }
+
+      for (auto &t : joint_times_)
+        t = time_data_.readFromRT()->uptime;
     }
 
     template <class TactileSensors>
@@ -187,38 +207,43 @@ namespace force_controller {
         // call child template class to update sensors
         update_sensors();
 
-        ROS_DEBUG_STREAM_NAMED(name_ + ".forces", "Forces: [" << (*forces_)[0] << ", " << (*forces_)[1] << "]");
-
         /*
          * Update forces and sensor states.
          */
         RealtimeGoalHandlePtr current_active_goal(rt_active_goal_);
         if (current_active_goal) {
-            for (int j = 0; j < forces_->size(); j++) {
+          ROS_DEBUG_STREAM_NAMED(name_ + ".forces", "Forces: [" << (*forces_)[0] << ", " << (*forces_)[1] << "]");
+
+          for (int j = 0; j < forces_->size(); j++) {
                 auto &force = (*forces_)[j];
                 auto &last_force = (*last_forces_)[j];
                 auto &state = sensor_states_[j];
                 auto &last_state = last_sensor_states_[j]; // debug purposes only, not used in logic
                 auto &joint_time = joint_times_[j];
 
-                if (last_force <= NOISE_THRESH && force > NOISE_THRESH) {
+                if (state < GOAL) { // if a joint has reached it's goal, we don't change states anymore
+                  if (std::abs(last_force) <= NOISE_THRESH && std::abs(force) > NOISE_THRESH) {
                     state = GOT_CONTACT;
-                } else if (last_force > NOISE_THRESH && force <= NOISE_THRESH) {
+                  } else if (std::abs(last_force) > NOISE_THRESH && std::abs(force) <= NOISE_THRESH) {
                     state = LOST_CONTACT;
-                } else if (last_force > NOISE_THRESH && force > NOISE_THRESH) {
+                  } else if (std::abs(last_force) > NOISE_THRESH && std::abs(force) > NOISE_THRESH) {
                     state = IN_CONTACT;
-                } else {
+                  } else {
                     state = NO_CONTACT;
-                }
+                  }
 
-                // no contact -> do trajectory sampling.
-                if (state <= LOST_CONTACT) {
+                  // no contact -> do trajectory sampling.
+                  if (state <= LOST_CONTACT) {
                     // TODO proceeding like this could cause jerking joints. better: find joint_t which is closest to current joint_val and continue from there
                     joint_time += period;
+                  }
                 }
 
+                ROS_DEBUG_NAMED(name_ + ".sensorState",
+                           "Sensor %d has state %s with force %.4f", j, m_statestring_[state].c_str(), force);
+
                 if (state != last_state) {
-                    ROS_DEBUG_NAMED(name_ + ".sensorStateChange",
+                    ROS_INFO_NAMED(name_ + ".sensorStateChange",
                                    "Sensor %d's state changed from %s to %s. f_t-1 %.4f, f_t %.4f", j,
                                    m_statestring_[last_state].c_str(), m_statestring_[state].c_str(), last_force, force);
                 }
@@ -283,6 +308,7 @@ namespace force_controller {
                     ROS_ERROR_NAMED(
                             name_,
                             "Unexpected error: No trajectory defined at current time. Please contact the package maintainer.");
+                    cancelCB(current_active_goal->gh_);
                     return;
                 }
             }
@@ -303,7 +329,7 @@ namespace force_controller {
             state_error_.acceleration[i] = 0.0;
 
             // Check tolerances
-            if (c_state_ <= TRANSITION) { // => Trajectory Execution
+            if (c_state_ <= TRANSITION) { // => Trajectory Execution || TODO this might cause non terminating controller if case 2
                 const RealtimeGoalHandlePtr rt_segment_goal = segment_it->getGoalHandle();
                 if (rt_segment_goal && rt_segment_goal == rt_active_goal_) {
                     // Check tolerances
@@ -315,8 +341,9 @@ namespace force_controller {
                             if (verbose_) {
                                 ROS_ERROR_STREAM_NAMED(name_, "Path tolerances failed for joint: " << joint_names_[i]);
                                 checkStateTolerancePerJoint(state_joint_error_, joint_tolerances.state_tolerance, true);
-                            }
 
+                            }
+                            sensor_states_[i] = VIOLATED;
                             if (rt_segment_goal && rt_segment_goal->preallocated_result_) {
                                 ROS_INFO_NAMED(name_, "Trajectory execution aborted (path tolerances)");
                                 rt_segment_goal->preallocated_result_->error_code =
@@ -324,13 +351,16 @@ namespace force_controller {
                                 rt_segment_goal->setAborted(rt_segment_goal->preallocated_result_);
                                 rt_active_goal_.reset();
                                 successful_joint_traj_.reset();
+                                reset_parameters();
                             } else {
                                 ROS_ERROR_STREAM("rt_segment_goal->preallocated_result_ NULL Pointer");
                             }
                         }
                     } else if (segment_it == --curr_traj[i].end()) {
+                      // this else if should activate once a joint trajectory reaches it's last segment. this should only happen if we have increased joint timings for joint[i]
+
                         if (verbose_)
-                            ROS_DEBUG_STREAM_THROTTLE_NAMED(1, name_,
+                            ROS_INFO_STREAM_THROTTLE_NAMED(1, name_,
                                                             "Finished executing last segment, checking goal tolerances");
 
                         // Controller uptimegit st
@@ -342,7 +372,12 @@ namespace force_controller {
                                 checkStateTolerancePerJoint(state_joint_error_, tolerances.goal_state_tolerance);
 
                         if (inside_goal_tolerances) {
-                            successful_joint_traj_[i] = 1;
+                          successful_joint_traj_[i] = 1;
+                          sensor_states_[i] = GOAL;
+
+                          if (last_sensor_states_[i] != GOAL) {
+                            ROS_INFO_NAMED(name_, "Joint %d inside goal tolerances!", i);
+                          }
                         } else if (uptime.toSec() < segment_it->endTime() + tolerances.goal_time_tolerance) {
                             // Still have some time left to meet the goal state tolerances
                         } else {
@@ -351,7 +386,7 @@ namespace force_controller {
                                 // Check the tolerances one more time to output the errors that occurs
                                 checkStateTolerancePerJoint(state_joint_error_, tolerances.goal_state_tolerance, true);
                             }
-
+                            sensor_states_[i] = VIOLATED;
                             if (rt_segment_goal) {
                                 ROS_INFO_NAMED(name_, "Trajectory execution aborted (goal tolerances)");
                                 rt_segment_goal->preallocated_result_->error_code =
@@ -379,12 +414,13 @@ namespace force_controller {
             current_active_goal->setSucceeded(current_active_goal->preallocated_result_);
             rt_active_goal_.reset();
             successful_joint_traj_.reset();
-            c_state_ = TRAJECTORY_EXEC;
+            reset_parameters();
         } else if (current_active_goal && current_active_goal->preallocated_result_) {
             if (check_finished()) {
-                ROS_INFO_NAMED(name_, "Force control succeeded");
+                ROS_INFO_NAMED(name_, "Non-trajectory success");
 
                 for (unsigned int i = 0; i < joints_.size(); ++i) {
+                    ROS_INFO_NAMED(name_, "Setting joint %d to %f", i, current_state_.position[i]); // TODO or hold_state()?
                     desired_state_.position[i] = current_state_.position[i];
                     desired_state_.velocity[i] = current_state_.velocity[i];
                     desired_state_.acceleration[i] = current_state_.acceleration[i];
@@ -398,21 +434,14 @@ namespace force_controller {
                     state_error_.acceleration[i] = 0.0;
                 }
 
-                current_active_goal->preallocated_feedback_->header.stamp = time_data_.readFromRT()->time;
-                current_active_goal->preallocated_feedback_->desired.positions = desired_state_.position;
-                current_active_goal->preallocated_feedback_->desired.velocities = desired_state_.velocity;
-                current_active_goal->preallocated_feedback_->desired.accelerations = desired_state_.acceleration;
-                current_active_goal->preallocated_feedback_->actual.positions = current_state_.position;
-                current_active_goal->preallocated_feedback_->actual.velocities = current_state_.velocity;
-                current_active_goal->preallocated_feedback_->error.positions = state_error_.position;
-                current_active_goal->preallocated_feedback_->error.velocities = state_error_.velocity;
-                current_active_goal->setFeedback(current_active_goal->preallocated_feedback_);
-
                 current_active_goal->preallocated_result_->error_code = control_msgs::FollowJointTrajectoryResult::SUCCESSFUL;
                 current_active_goal->setSucceeded(current_active_goal->preallocated_result_);
                 rt_active_goal_.reset();
                 successful_joint_traj_.reset();
-                c_state_ = TRAJECTORY_EXEC;
+                reset_parameters();
+
+                // Hold current position
+                setHoldPosition(time_data.uptime);
             }
         }
 

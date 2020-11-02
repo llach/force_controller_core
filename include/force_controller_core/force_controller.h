@@ -51,7 +51,10 @@ namespace force_controller {
               hardware_interface::PositionJointInterface>
 {
     void goalCB(GoalHandle gh) override;
+    void cancelCB(GoalHandle gh) override;
     void update(const ros::Time& time, const ros::Duration& period) override;
+
+    void reset_parameters();
 
 protected:
     bool init(hardware_interface::PositionJointInterface* hw, ros::NodeHandle& root_nh,
@@ -63,6 +66,7 @@ protected:
     virtual bool check_finished() = 0;
 
     std::string name_ = "force_controller";
+    ActionServerPtr    f_action_server_;
 
     int num_sensors_ = 0;
     bool realtime_busy_ = false;
@@ -92,7 +96,7 @@ protected:
     std::shared_ptr<std::vector<float>> delta_p_;
 
     // sensor state data
-    enum SENSOR_STATE {NO_CONTACT, LOST_CONTACT, GOT_CONTACT, IN_CONTACT};
+    enum SENSOR_STATE {NO_CONTACT, LOST_CONTACT, GOT_CONTACT, IN_CONTACT, GOAL, VIOLATED};
     std::vector<SENSOR_STATE> sensor_states_;
 
     std::vector<SENSOR_STATE> last_sensor_states_;
@@ -101,7 +105,9 @@ protected:
             {NO_CONTACT, "no contact"},
             {GOT_CONTACT, "got contact"},
             {LOST_CONTACT, "lost contact"},
-            {IN_CONTACT, "still in contact"}
+            {IN_CONTACT, "still in contact"},
+            {GOAL, "reached goal"},
+            {VIOLATED, "violated goal constraints"}
     };
 
     // controller state data
