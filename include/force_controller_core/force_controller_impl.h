@@ -71,7 +71,9 @@ namespace force_controller {
                                             boost::bind(&ForceTrajectoryController::cancelCB, this, _1),
                                             false));
       action_server_->start();
-
+      for (int i=0; i<joint_names_.size(); i++){
+        ROS_INFO_STREAM_NAMED(name_, "JN" << i << " " << joint_names_[i]);
+      }
       joint_times_.resize(num_sensors_);
 
         sensors_ = std::make_shared<TactileSensors>(root_nh, forces_);
@@ -233,7 +235,7 @@ namespace force_controller {
                   }
 
                   // no contact -> do trajectory sampling.
-                  if (state <= LOST_CONTACT) {
+                  if (state <= LOST_CONTACT || true) {
                     // TODO proceeding like this could cause jerking joints. better: find joint_t which is closest to current joint_val and continue from there
                     joint_time += period;
                   }
@@ -254,7 +256,7 @@ namespace force_controller {
                 // if the transition was detected last time, we enter force_control from here onwards
                 c_state_ = FORCE_CTRL;
             } else if (c_state_ == TRAJECTORY_EXEC) {
-                if (check_controller_transition()) { // handled in child
+                if (check_controller_transition() && false) { // handled in child
                     ROS_INFO_NAMED(name_, "C TRANSITION!");
                     c_state_ = TRANSITION;
 
@@ -275,7 +277,8 @@ namespace force_controller {
             // There's no acceleration data available in a joint handle
 
             typename TrajectoryPerJoint::const_iterator segment_it;
-            if (c_state_ > TRANSITION && (*forces_)[i] > NOISE_THRESH) {
+            if (c_state_ > TRANSITION && std::abs((*forces_)[i]) > NOISE_THRESH && false) {
+                ROS_INFO_STREAM_NAMED(name_, "IN FC " << i);
                 double delta_p = current_state_.position[i] - (*pos_T_)[i];
                 double k_bar_t = (*forces_)[i] / delta_p;
 
@@ -298,7 +301,7 @@ namespace force_controller {
 //                }
 
                 desired_joint_state_.position[0] = p_des_;
-                desired_joint_state_.velocity[0] = current_state_.velocity[i];
+                desired_joint_state_.velocity[0] = current_state_.velocity[i]; // TODO this could probably be done smarter
 
             } else {
                 segment_it =
@@ -403,7 +406,7 @@ namespace force_controller {
             }
         }
 
-        publish_debug_info();
+
 
         // If there is an active goal and all segments finished successfully then set goal as succeeded
         // current_active_goal is reused from above the state update
@@ -459,11 +462,14 @@ namespace force_controller {
             rt_active_goal_->preallocated_feedback_->error.positions = state_error_.position;
             rt_active_goal_->preallocated_feedback_->error.velocities = state_error_.velocity;
             rt_active_goal_->setFeedback(rt_active_goal_->preallocated_feedback_);
+
         }
 
-        /*
-         * Store data for next loop & cleanup.
-         */
+      publish_debug_info();
+
+      /*
+       * Store data for next loop & cleanup.
+       */
         for (int j = 0; j < forces_->size(); j++){
             (*last_forces_)[j] = (*forces_)[j];
             last_sensor_states_[j] = sensor_states_[j];
