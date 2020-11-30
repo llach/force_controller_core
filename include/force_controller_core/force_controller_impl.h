@@ -59,6 +59,9 @@ namespace force_controller {
         delta_F_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
         delta_p_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
 
+        des_vel_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+        last_des_p_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+
         sensor_states_ = std::vector<SENSOR_STATE>(num_sensors_, SENSOR_STATE::NO_CONTACT);
         last_sensor_states_ = std::vector<SENSOR_STATE>(num_sensors_, SENSOR_STATE::NO_CONTACT);
 
@@ -163,12 +166,14 @@ namespace force_controller {
       sensor_states_ = std::vector<SENSOR_STATE>(num_sensors_, SENSOR_STATE::NO_CONTACT);
       last_sensor_states_ = std::vector<SENSOR_STATE>(num_sensors_, SENSOR_STATE::NO_CONTACT);
 
-      k_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+//      k_ = std::make_shared<std::vector<float>>(num_sensors_, 200.0); TODO reuncomment this line
       forces_T_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
       pos_T_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
 
       delta_F_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
       delta_p_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+
+      force_n_ = 1;
 
       for (int j = 0; j < forces_->size(); j++){
         (*last_forces_)[j] = 0.0;
@@ -235,7 +240,7 @@ namespace force_controller {
                   }
 
                   // no contact -> do trajectory sampling.
-                  if (state <= LOST_CONTACT || true) {
+                  if (state <= LOST_CONTACT) {
                     // TODO proceeding like this could cause jerking joints. better: find joint_t which is closest to current joint_val and continue from there
                     joint_time += period;
                   }
@@ -256,7 +261,7 @@ namespace force_controller {
                 // if the transition was detected last time, we enter force_control from here onwards
                 c_state_ = FORCE_CTRL;
             } else if (c_state_ == TRAJECTORY_EXEC) {
-                if (check_controller_transition() && false) { // handled in child
+                if (check_controller_transition()) { // handled in child
                     ROS_INFO_NAMED(name_, "C TRANSITION!");
                     c_state_ = TRANSITION;
 
@@ -270,6 +275,8 @@ namespace force_controller {
             }
         }
 
+      vel_limit_ = 0;
+
         // Update desired state and state error
         for (unsigned int i = 0; i < joints_.size(); ++i) {
             current_state_.position[i] = joints_[i].getPosition();
@@ -277,31 +284,47 @@ namespace force_controller {
             // There's no acceleration data available in a joint handle
 
             typename TrajectoryPerJoint::const_iterator segment_it;
-            if (c_state_ > TRANSITION && std::abs((*forces_)[i]) > NOISE_THRESH && false) {
+            if (c_state_ > TRANSITION && std::abs((*forces_)[i]) > NOISE_THRESH) {
                 ROS_INFO_STREAM_NAMED(name_, "IN FC " << i);
-                double delta_p = current_state_.position[i] - (*pos_T_)[i];
-                double k_bar_t = (*forces_)[i] / delta_p;
 
-                if (!std::isinf(k_bar_t)){
-                    (*k_)[i] = (1-lambda_)*k_bar_t + lambda_*(*k_)[i];
-                } else {
-                    k_bar_t = 0.0;
-                }
+//                // estimate k
+//                double k_bar_t = (*forces_)[i] / delta_p;
+//                if (!std::isinf(k_bar_t)){
+//                    (*k_)[i] = (1-lambda_)*k_bar_t + lambda_*(*k_)[i];
+//                } else {
+//                    k_bar_t = 0.0;
+//                }
 
-                // if joint is at max force, we set it to hold the current position
-                double f_des = (*max_forces_)[i] - (*forces_)[i];
-                double p_des_ = (f_des / (*k_)[i]) + current_state_.position[i];
+                // calculate new desired position
+                double f_des = (*max_forces_)[i] - std::abs((*forces_)[i]);
+                double delta_p_force = (f_des / (*k_)[i]);
+                double delta_p_max = (max_vel_ * period.toSec() * force_n_);
 
-                // store debug info
-                (*delta_F_)[i] = f_des;
-                (*delta_p_)[i] = delta_p;
+                // interpolate between current position and max force position for smoother transition
+//                p_des_ = (1-lambda_)*p_des_ + lambda_*current_state_.position[i];
+
 
 //                if (newF < goal_joint_forces_[i]){
 //                    p_des_ += (newF/ k_bar_[i]);
 //                }
 
-                desired_joint_state_.position[0] = p_des_;
-                desired_joint_state_.velocity[0] = current_state_.velocity[i]; // TODO this could probably be done smarter
+                // enforce velocity limits
+                if (std::abs(delta_p_force) > delta_p_max){
+                  vel_limit_ = 1;
+                  desired_joint_state_.position[0] = current_state_.position[i] - delta_p_max;
+                  desired_joint_state_.velocity[0] = max_vel_;
+                } else {
+                  desired_joint_state_.position[0] = current_state_.position[i] - delta_p_force;
+                  desired_joint_state_.velocity[0] = (desired_joint_state_.position[0] - (*last_des_p_)[i]) / period.toSec();
+                }
+
+              double delta_p = current_state_.position[i] - (*pos_T_)[i];
+              // store debug info
+              (*delta_F_)[i] = f_des;
+              (*delta_p_)[i] = delta_p;
+
+
+              force_n_++;
 
             } else {
                 segment_it =
@@ -419,7 +442,7 @@ namespace force_controller {
             successful_joint_traj_.reset();
             reset_parameters();
         } else if (current_active_goal && current_active_goal->preallocated_result_) {
-            if (check_finished()) {
+            if (check_finished() && !goal_maintain_) {
                 ROS_INFO_NAMED(name_, "Non-trajectory success");
 
                 for (unsigned int i = 0; i < joints_.size(); ++i) {
@@ -465,6 +488,14 @@ namespace force_controller {
 
         }
 
+      for (int j = 0; j < des_vel_->size(); j++){
+        if (period.toSec() == 0.0){
+          (*des_vel_)[j] = 0.0;
+        } else {
+          (*des_vel_)[j] = (desired_state_.position[j] - (*last_des_p_)[j]) / period.toSec();
+        }
+      }
+
       publish_debug_info();
 
       /*
@@ -473,6 +504,7 @@ namespace force_controller {
         for (int j = 0; j < forces_->size(); j++){
             (*last_forces_)[j] = (*forces_)[j];
             last_sensor_states_[j] = sensor_states_[j];
+            (*last_des_p_)[j] = desired_state_.position[j];
         }
 
         // Publish state

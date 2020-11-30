@@ -26,7 +26,13 @@ using force_controller::ForceTrajectoryController<TactileSensors>::num_sensors_;
 
 using force_controller::ForceTrajectoryController<TactileSensors>::NOISE_THRESH;
 
+using force_controller::ForceTrajectoryController<TactileSensors>::vel_limit_;
+using force_controller::ForceTrajectoryController<TactileSensors>::des_vel_;
+using force_controller::ForceTrajectoryController<TactileSensors>::last_des_p_;
+using force_controller::ForceTrajectoryController<TactileSensors>::goal_maintain_;
+
 using force_controller::ForceTrajectoryController<TactileSensors>::k_;
+using force_controller::ForceTrajectoryController<TactileSensors>::lambda_;
 using force_controller::ForceTrajectoryController<TactileSensors>::forces_T_;
 using force_controller::ForceTrajectoryController<TactileSensors>::pos_T_;
 

@@ -79,21 +79,32 @@ protected:
     // sample times for joints
     std::vector<ros::Time> joint_times_;
 
+    // controller finish mode: if true, we maintain goal force instead of finishing trajectory
+    bool goal_maintain_ = false;
+
     // force vectors
     float NOISE_THRESH = 0.05;
+
+    float max_vel_ = 0.001;
+
+    int vel_limit_ = 0;
+    int force_n_ = 0;
 
     std::shared_ptr<std::vector<float>> forces_;
     std::shared_ptr<std::vector<float>> max_forces_;
     std::shared_ptr<std::vector<float>> last_forces_;
     std::shared_ptr<std::vector<float>> thresh_forces_;
 
-    double lambda_ = 0.9;
+    double lambda_ = 0.25;
     std::shared_ptr<std::vector<float>> k_;
     std::shared_ptr<std::vector<float>> forces_T_;
     std::shared_ptr<std::vector<float>> pos_T_;
 
     std::shared_ptr<std::vector<float>> delta_F_;
     std::shared_ptr<std::vector<float>> delta_p_;
+
+    std::shared_ptr<std::vector<float>> des_vel_;
+    std::shared_ptr<std::vector<float>> last_des_p_;
 
     // sensor state data
     enum SENSOR_STATE {NO_CONTACT, LOST_CONTACT, GOT_CONTACT, IN_CONTACT, GOAL, VIOLATED};
