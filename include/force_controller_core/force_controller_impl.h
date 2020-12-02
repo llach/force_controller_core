@@ -291,41 +291,34 @@ namespace force_controller {
 //                double k_bar_t = (*forces_)[i] / delta_p;
 //                if (!std::isinf(k_bar_t)){
 //                    (*k_)[i] = (1-lambda_)*k_bar_t + lambda_*(*k_)[i];
-//                } else {
-//                    k_bar_t = 0.0;
 //                }
 
                 // calculate new desired position
                 double f_des = (*max_forces_)[i] - std::abs((*forces_)[i]);
                 double delta_p_force = (f_des / (*k_)[i]);
+
+                // --> use PID controller here
                 double delta_p_max = (max_vel_ * period.toSec() * force_n_);
-
-                // interpolate between current position and max force position for smoother transition
-//                p_des_ = (1-lambda_)*p_des_ + lambda_*current_state_.position[i];
-
-
-//                if (newF < goal_joint_forces_[i]){
-//                    p_des_ += (newF/ k_bar_[i]);
-//                }
 
                 // enforce velocity limits
                 if (std::abs(delta_p_force) > delta_p_max){
                   vel_limit_ = 1;
                   desired_joint_state_.position[0] = current_state_.position[i] - delta_p_max;
-                  desired_joint_state_.velocity[0] = max_vel_;
                 } else {
                   desired_joint_state_.position[0] = current_state_.position[i] - delta_p_force;
-                  desired_joint_state_.velocity[0] = (desired_joint_state_.position[0] - (*last_des_p_)[i]) / period.toSec();
                 }
 
+              // calculate velocity
+              desired_joint_state_.velocity[0] = (desired_joint_state_.position[0] - (*last_des_p_)[i]) / period.toSec();
+
               double delta_p = current_state_.position[i] - (*pos_T_)[i];
+
               // store debug info
               (*delta_F_)[i] = f_des;
               (*delta_p_)[i] = delta_p;
 
-
+              // increase force control counter
               force_n_++;
-
             } else {
                 segment_it =
                         sample(curr_traj[i], joint_times_[i].toSec(), desired_joint_state_);
