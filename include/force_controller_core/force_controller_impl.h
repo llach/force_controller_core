@@ -173,6 +173,10 @@ namespace force_controller {
       delta_F_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
       delta_p_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
 
+      delta_p_vel_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+      delta_p_force_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+
+      error_integral_ = 0.0;
       force_n_ = 1;
 
       for (int j = 0; j < forces_->size(); j++){
@@ -283,9 +287,13 @@ namespace force_controller {
             current_state_.velocity[i] = joints_[i].getVelocity();
             // There's no acceleration data available in a joint handle
 
+            float state_err = current_state_.position[i] - desired_state_.position[i];
+
             typename TrajectoryPerJoint::const_iterator segment_it;
             if (c_state_ > TRANSITION && std::abs((*forces_)[i]) > NOISE_THRESH) {
                 ROS_INFO_STREAM_NAMED(name_, "IN FC " << i);
+
+                error_integral_ += state_err;
 
 //                // estimate k
 //                double k_bar_t = (*forces_)[i] / delta_p;
@@ -296,29 +304,28 @@ namespace force_controller {
                 // calculate new desired position
                 double f_des = (*max_forces_)[i] - std::abs((*forces_)[i]);
                 double delta_p_force = (f_des / (*k_)[i]);
+                (*delta_F_)[i] = f_des;
 
-                // --> use PID controller here
-                double delta_p_max = (max_vel_ * period.toSec() * force_n_);
+                // --> use PI[D] controller here
+                double delta_p_max = (min_vel_ * period.toSec());
+                delta_p_max += K_i_ * error_integral_;
 
                 // enforce velocity limits
-                if (std::abs(delta_p_force) > delta_p_max){
+                if (std::abs(delta_p_force) > std::abs(delta_p_max)){
                   vel_limit_ = 1;
-                  desired_joint_state_.position[0] = current_state_.position[i] - delta_p_max;
+                  (*delta_p_)[i] = delta_p_max;
                 } else {
-                  desired_joint_state_.position[0] = current_state_.position[i] - delta_p_force;
+                  (*delta_p_)[i] = delta_p_force;
                 }
 
-              // calculate velocity
+              // calculate new position and velocity
+              desired_joint_state_.position[0] = current_state_.position[i] - (*delta_p_)[i];
               desired_joint_state_.velocity[0] = (desired_joint_state_.position[0] - (*last_des_p_)[i]) / period.toSec();
 
-              double delta_p = current_state_.position[i] - (*pos_T_)[i];
-
               // store debug info
-              (*delta_F_)[i] = f_des;
-              (*delta_p_)[i] = delta_p;
+              (*delta_p_vel_)[i] = std::abs(delta_p_max);
+              (*delta_p_force_)[i] = std::abs(delta_p_force);
 
-              // increase force control counter
-              force_n_++;
             } else {
                 segment_it =
                         sample(curr_traj[i], joint_times_[i].toSec(), desired_joint_state_);

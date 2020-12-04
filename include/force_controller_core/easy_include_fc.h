@@ -24,8 +24,12 @@ using force_controller::ForceTrajectoryController<TactileSensors>::thresh_forces
 using force_controller::ForceTrajectoryController<TactileSensors>::name_;
 using force_controller::ForceTrajectoryController<TactileSensors>::num_sensors_;
 
+using force_controller::ForceTrajectoryController<TactileSensors>::K_i_;
+using force_controller::ForceTrajectoryController<TactileSensors>::error_integral_;
+
 using force_controller::ForceTrajectoryController<TactileSensors>::NOISE_THRESH;
 
+using force_controller::ForceTrajectoryController<TactileSensors>::min_vel_;
 using force_controller::ForceTrajectoryController<TactileSensors>::vel_limit_;
 using force_controller::ForceTrajectoryController<TactileSensors>::des_vel_;
 using force_controller::ForceTrajectoryController<TactileSensors>::last_des_p_;
@@ -38,6 +42,8 @@ using force_controller::ForceTrajectoryController<TactileSensors>::pos_T_;
 
 using force_controller::ForceTrajectoryController<TactileSensors>::delta_F_;
 using force_controller::ForceTrajectoryController<TactileSensors>::delta_p_;
+using force_controller::ForceTrajectoryController<TactileSensors>::delta_p_force_;
+using force_controller::ForceTrajectoryController<TactileSensors>::delta_p_vel_;
 
 using force_controller::ForceTrajectoryController<TactileSensors>::sensor_states_;
 using force_controller::ForceTrajectoryController<TactileSensors>::last_sensor_states_;
