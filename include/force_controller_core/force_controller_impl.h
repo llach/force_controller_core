@@ -49,6 +49,9 @@ namespace force_controller {
       bool ret = JointTrajectoryController::init(hw, root_nh, controller_nh);
       num_sensors_ = joints_.size();
 
+      forces_= std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+      last_forces_= std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+
       reset_parameters();
 
       ROS_INFO_NAMED(name_, "reloading action server ...");
@@ -160,9 +163,6 @@ namespace force_controller {
 
       delta_p_vel_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
       delta_p_force_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-
-      forces_= std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-      last_forces_= std::make_shared<std::vector<float>>(num_sensors_, 0.0);
 
       des_vel_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
       last_des_p_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
