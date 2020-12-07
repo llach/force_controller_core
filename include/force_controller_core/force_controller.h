@@ -85,13 +85,17 @@ protected:
     // force vectors
     float NOISE_THRESH = 0.05;
 
-    float min_vel_ = 0.02;
+    float min_vel_ = 0.01;
 
     int vel_limit_ = 0;
     int force_n_ = 0;
 
+    float K_p_ = 5;
     float K_i_ = 0.001;
     float error_integral_ = 0.0;
+    float max_error_int_ = 1.1;
+
+    float init_k_ = 1;
 
     std::shared_ptr<std::vector<float>> forces_;
     std::shared_ptr<std::vector<float>> max_forces_;
@@ -105,6 +109,7 @@ protected:
 
     std::shared_ptr<std::vector<float>> delta_F_;
     std::shared_ptr<std::vector<float>> delta_p_;
+    std::shared_ptr<std::vector<float>> delta_p_T_;
 
     std::shared_ptr<std::vector<float>> delta_p_vel_;
     std::shared_ptr<std::vector<float>> delta_p_force_;

@@ -44,28 +44,12 @@ namespace force_controller {
     template <class TactileSensors>
     inline bool ForceTrajectoryController<TactileSensors>::init(hardware_interface::PositionJointInterface* hw,
                                                                ros::NodeHandle& root_nh, ros::NodeHandle& controller_nh) {
-        ROS_INFO_NAMED(name_, "FTC init");
+      ROS_INFO_NAMED(name_, "FTC init");
 
-        bool ret = JointTrajectoryController::init(hw, root_nh, controller_nh);
-        num_sensors_ = joints_.size();
+      bool ret = JointTrajectoryController::init(hw, root_nh, controller_nh);
+      num_sensors_ = joints_.size();
 
-        forces_= std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-        last_forces_= std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-
-        k_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-        forces_T_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-        pos_T_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-
-        delta_F_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-        delta_p_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-
-        des_vel_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-        last_des_p_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
-
-        sensor_states_ = std::vector<SENSOR_STATE>(num_sensors_, SENSOR_STATE::NO_CONTACT);
-        last_sensor_states_ = std::vector<SENSOR_STATE>(num_sensors_, SENSOR_STATE::NO_CONTACT);
-
-        c_state_ = TRAJECTORY_EXEC;
+      reset_parameters();
 
       ROS_INFO_NAMED(name_, "reloading action server ...");
       // ROS API: Action interface
@@ -166,15 +150,22 @@ namespace force_controller {
       sensor_states_ = std::vector<SENSOR_STATE>(num_sensors_, SENSOR_STATE::NO_CONTACT);
       last_sensor_states_ = std::vector<SENSOR_STATE>(num_sensors_, SENSOR_STATE::NO_CONTACT);
 
-//      k_ = std::make_shared<std::vector<float>>(num_sensors_, 200.0); TODO reuncomment this line
+      k_ = std::make_shared<std::vector<float>>(num_sensors_, init_k_);
       forces_T_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
       pos_T_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
 
       delta_F_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
       delta_p_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+      delta_p_T_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
 
       delta_p_vel_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
       delta_p_force_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+
+      forces_= std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+      last_forces_= std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+
+      des_vel_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+      last_des_p_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
 
       error_integral_ = 0.0;
       force_n_ = 1;
@@ -293,13 +284,18 @@ namespace force_controller {
             if (c_state_ > TRANSITION && std::abs((*forces_)[i]) > NOISE_THRESH) {
                 ROS_INFO_STREAM_NAMED(name_, "IN FC " << i);
 
-                error_integral_ += state_err;
+                // prevent integral from exploding
+                if (error_integral_ < max_error_int_){
+                  error_integral_ += state_err;
+                }
 
-//                // estimate k
-//                double k_bar_t = (*forces_)[i] / delta_p;
-//                if (!std::isinf(k_bar_t)){
-//                    (*k_)[i] = (1-lambda_)*k_bar_t + lambda_*(*k_)[i];
-//                }
+              (*delta_p_T_)[i] = ((*pos_T_)[i] - current_state_.position[i]);
+
+                // estimate k
+                double k_bar_t = (*forces_)[i] / (*delta_p_T_)[i];
+                if (!std::isinf(k_bar_t)){
+                    (*k_)[i] = (1-lambda_)*k_bar_t + lambda_*(*k_)[i];
+                }
 
                 // calculate new desired position
                 double f_des = (*max_forces_)[i] - std::abs((*forces_)[i]);
@@ -307,7 +303,7 @@ namespace force_controller {
                 (*delta_F_)[i] = f_des;
 
                 // --> use PI[D] controller here
-                double delta_p_max = (min_vel_ * period.toSec());
+                double delta_p_max = K_p_ * (min_vel_ * period.toSec());
                 delta_p_max += K_i_ * error_integral_;
 
                 // enforce velocity limits
