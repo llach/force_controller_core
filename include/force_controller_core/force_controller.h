@@ -52,6 +52,15 @@ enum CONTROLLER_STATE {TRAJECTORY_EXEC, TRANSITION, FORCE_CTRL};
 // sensor/joint states
 enum SENSOR_STATE {NO_CONTACT, LOST_CONTACT, GOT_CONTACT, IN_CONTACT, GOAL, VIOLATED};
 
+std::map<SENSOR_STATE, std::string> STATE_STRING = {
+        {NO_CONTACT, "no contact"},
+        {GOT_CONTACT, "got contact"},
+        {LOST_CONTACT, "lost contact"},
+        {IN_CONTACT, "still in contact"},
+        {GOAL, "reached goal"},
+        {VIOLATED, "violated goal constraints"}
+};
+
 class JointForceController
 {
 public:
@@ -68,12 +77,9 @@ public:
             int f_error_window = 200
             );
 
-    void update_joint_states(double loop_time);
+    void on_transition();
     void reset_parameters();
-
-    bool check_controller_transition();
-    void publish_debug_info();
-    bool check_finished();
+    void update_joint_states(double loop_time);
 
     // trajectory time from of joint in seconds
     double joint_time_;
@@ -113,8 +119,10 @@ public:
     float last_force_;
 
     float k_;
+    float p_;
+
     float force_T_;
-    float pos_T_;
+    float p_T_;
 
     float delta_F_;
     float delta_p_;
@@ -129,15 +137,8 @@ public:
     SENSOR_STATE sensor_state_;
     SENSOR_STATE last_sensor_state_;
 
-    std::map<SENSOR_STATE, std::string> m_statestring_ = {
-            {NO_CONTACT, "no contact"},
-            {GOT_CONTACT, "got contact"},
-            {LOST_CONTACT, "lost contact"},
-            {IN_CONTACT, "still in contact"},
-            {GOAL, "reached goal"},
-            {VIOLATED, "violated goal constraints"}
-    };
-};
-}
+}; // JointForceController
+
+} // fcc
 
 #endif //FORCE_CONTROLLER_CORE_FORCE_CONTROLLER_H
