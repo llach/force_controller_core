@@ -80,6 +80,7 @@ public:
     void calculate(double p, double last_p_des, double dt);
     void on_transition();
     void reset_parameters();
+    void finish_iteration();
     void update_joint_states(double loop_time);
 
     double get_p_des(){return p_des_;};
@@ -138,8 +139,7 @@ public:
     double delta_p_vel_;
     double delta_p_force_;
 
-    double des_vel_;
-    double last_des_p_;
+    double last_p_des_;
 
     SENSOR_STATE sensor_state_;
     SENSOR_STATE last_sensor_state_;

@@ -47,9 +47,8 @@ void JointForceController::reset_parameters(){
 
   delta_p_vel_ = 0.0;
   delta_p_force_ = 0.0;
-
-  des_vel_ = 0.0;
-  last_des_p_ = 0.0;
+  
+  last_p_des_ = 0.0;
 
   last_force_ = 0.0;
 
@@ -129,7 +128,13 @@ void JointForceController::calculate(double p, double last_p_des, double dt){
 
   // calculate new position and velocity
   p_des_ = p - delta_p_;
-  v_des_ = (p_des_ - last_des_p_) / dt;
+  v_des_ = (p_des_ - last_p_des_) / dt;
+}
+
+void JointForceController::finish_iteration(){
+    last_force_ = *force_;
+    last_sensor_state_ = sensor_state_;
+    last_p_des_ = p_des_;
 }
 
 } // fcc
