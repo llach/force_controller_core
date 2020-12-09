@@ -2,7 +2,7 @@
 <package format="2">
   <name>force_controller_core</name>
   <version>0.0.2</version>
-  <description>Force Controller logic.</description>
+  <description>Force Controller Math</description>
 
   <maintainer email="luca.lach@pal-robotics.com">llach</maintainer>
 
@@ -12,11 +12,6 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <build_depend>message_generation</build_depend>
-  <exec_depend>message_runtime</exec_depend>
-
-  <depend>controller_interface</depend>
-  <depend>joint_trajectory_controller</depend>
   <depend>roscpp</depend>
 
 </package>

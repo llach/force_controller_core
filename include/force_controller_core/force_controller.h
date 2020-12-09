@@ -38,99 +38,96 @@
 #ifndef FORCE_CONTROLLER_CORE_FORCE_CONTROLLER_H
 #define FORCE_CONTROLLER_CORE_FORCE_CONTROLLER_H
 
-#include <joint_trajectory_controller/joint_trajectory_controller.h>
-#include <trajectory_interface/quintic_spline_segment.h>
-
-#include <joint_trajectory_controller/joint_trajectory_segment.h>
-
+#include <map>
 #include <deque>
+#include <memory>
+#include <vector>
 #include <numeric>
 
-namespace force_controller {
+namespace fcc {
 
-    template <class TactileSensors>
-    class ForceTrajectoryController
-            : public joint_trajectory_controller::JointTrajectoryController<trajectory_interface::QuinticSplineSegment<double>,
-              hardware_interface::PositionJointInterface>
+// controller states
+enum CONTROLLER_STATE {TRAJECTORY_EXEC, TRANSITION, FORCE_CTRL};
+
+// sensor/joint states
+enum SENSOR_STATE {NO_CONTACT, LOST_CONTACT, GOT_CONTACT, IN_CONTACT, GOAL, VIOLATED};
+
+class JointForceController
 {
-    void goalCB(GoalHandle gh) override;
-    void cancelCB(GoalHandle gh) override;
-    void update(const ros::Time& time, const ros::Duration& period) override;
+public:
+    JointForceController(
+            std::string joint_name,
+            std::shared_ptr<float> force,
+            float noise_thresh = 0.0,
+            float target_force = 1.0,
+            float init_k = 1,
+            float min_vel = 0.01,
+            float K_p = 1,
+            float K_i = 0.001,
+            float max_error_int = 1.1,
+            int f_error_window = 200
+            );
 
+    void update_joint_states(double loop_time);
     void reset_parameters();
 
-protected:
-    bool init(hardware_interface::PositionJointInterface* hw, ros::NodeHandle& root_nh,
-              ros::NodeHandle& controller_nh) override;
+    bool check_controller_transition();
+    void publish_debug_info();
+    bool check_finished();
 
-    virtual void update_sensors() = 0;
-    virtual bool check_controller_transition() = 0;
-    virtual void publish_debug_info() = 0;
-    virtual bool check_finished() = 0;
-
-    std::string name_ = "force_controller";
-    ActionServerPtr    f_action_server_;
-
-    int num_sensors_ = 0;
-    bool realtime_busy_ = false;
-
-    ros::Time curr_time_;
-
-    typedef std::shared_ptr<TactileSensors> TactileSensorsPtr;
-    TactileSensorsPtr sensors_;
-
-    // sample times for joints
-    std::vector<ros::Time> joint_times_;
+    // trajectory time from of joint in seconds
+    double joint_time_;
 
     // controller finish mode: if true, we maintain goal force instead of finishing trajectory
     bool goal_maintain_ = false;
 
-    // force vectors
-    float NOISE_THRESH = 0.05;
+    // name of actuated joint
+    std::string joint_name_;
 
-    float min_vel_ = 0.01;
+    // pointer to force
+    std::shared_ptr<float> force_;
 
+    // configurable parameters
+    float noise_thresh_;
+    float target_force_;
+
+    float init_k_;
+
+    float min_vel_;
+
+    float K_p_;
+    float K_i_;
+
+    float max_error_int_;
+    int f_error_window_;
+
+    // internal parameters
     int vel_limit_ = 0;
     int force_n_ = 0;
 
-    float K_p_ = 5;
-    float K_i_ = 0.001;
-    float max_error_int_ = 1.1;
+    std::deque<float> f_error_queue_;
+    float error_integral_;
 
-    int f_error_window_ = 200;
-    std::deque<double> f_error_queue_;
+    float f_error_integral_;
 
-    float init_k_ = 875;
+    float last_force_;
 
-    std::shared_ptr<std::vector<float>> error_integral_;
-    double f_error_integral_;
+    float k_;
+    float force_T_;
+    float pos_T_;
 
-    std::shared_ptr<std::vector<float>> forces_;
-    std::shared_ptr<std::vector<float>> max_forces_;
-    std::shared_ptr<std::vector<float>> last_forces_;
-    std::shared_ptr<std::vector<float>> thresh_forces_;
+    float delta_F_;
+    float delta_p_;
+    float delta_p_T_;
 
-    double lambda_ = 0.25;
-    std::shared_ptr<std::vector<float>> k_;
-    std::shared_ptr<std::vector<float>> forces_T_;
-    std::shared_ptr<std::vector<float>> pos_T_;
+    float delta_p_vel_;
+    float delta_p_force_;
 
-    std::shared_ptr<std::vector<float>> delta_F_;
-    std::shared_ptr<std::vector<float>> delta_p_;
-    std::shared_ptr<std::vector<float>> delta_p_T_;
+    float des_vel_;
+    float last_des_p_;
 
-    std::shared_ptr<std::vector<float>> delta_p_vel_;
-    std::shared_ptr<std::vector<float>> delta_p_force_;
-
-
-    std::shared_ptr<std::vector<float>> des_vel_;
-    std::shared_ptr<std::vector<float>> last_des_p_;
-
-    // sensor state data
-    enum SENSOR_STATE {NO_CONTACT, LOST_CONTACT, GOT_CONTACT, IN_CONTACT, GOAL, VIOLATED};
-    std::vector<SENSOR_STATE> sensor_states_;
-
-    std::vector<SENSOR_STATE> last_sensor_states_;
+    SENSOR_STATE sensor_state_;
+    SENSOR_STATE last_sensor_state_;
 
     std::map<SENSOR_STATE, std::string> m_statestring_ = {
             {NO_CONTACT, "no contact"},
@@ -140,13 +137,7 @@ protected:
             {GOAL, "reached goal"},
             {VIOLATED, "violated goal constraints"}
     };
-
-    // controller state data
-    enum CONTROLLER_STATE {TRAJECTORY_EXEC, TRANSITION, FORCE_CTRL};
-    CONTROLLER_STATE c_state_;
 };
 }
-
-#include "force_controller_impl.h"
 
 #endif //FORCE_CONTROLLER_CORE_FORCE_CONTROLLER_H

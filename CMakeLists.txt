@@ -10,20 +10,30 @@ endif ()
 
 find_package(catkin REQUIRED COMPONENTS
         roscpp
-        controller_interface
-        joint_trajectory_controller
         )
 
 catkin_package(
         CATKIN_DEPENDS
-        joint_trajectory_controller
         INCLUDE_DIRS include
 )
 
 include_directories(${catkin_INCLUDE_DIRS})
 
-add_library(${PROJECT_NAME} INTERFACE)
-target_include_directories(${PROJECT_NAME} INTERFACE include/)
+add_library(${PROJECT_NAME}
+        include/force_controller_core/force_controller.h
+        src/force_controller.cpp
+        )
+
+target_include_directories(${PROJECT_NAME}
+        PUBLIC include/
+        PUBLIC ${catkin_INCLUDE_DIRS}
+        )
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
 # Install
 install(DIRECTORY include/ DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION})
+
+install(TARGETS ${PROJECT_NAME}
+        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
