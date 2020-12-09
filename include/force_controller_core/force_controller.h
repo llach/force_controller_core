@@ -66,20 +66,24 @@ class JointForceController
 public:
     JointForceController(
             std::string joint_name,
-            std::shared_ptr<float> force,
-            float noise_thresh = 0.0,
-            float target_force = 1.0,
-            float init_k = 1,
-            float min_vel = 0.01,
-            float K_p = 1,
-            float K_i = 0.001,
-            float max_error_int = 1.1,
-            int f_error_window = 200
+            std::shared_ptr<double> force,
+            double noise_thresh = 0.0,
+            double target_force = 1.0,
+            double init_k = 1,
+            double min_vel = 0.01,
+            double K_p = 1,
+            double K_i = 0.001,
+            double max_error_int = 1.1,
+            unsigned int f_error_window = 200
             );
 
+    void calculate(double p, double last_p_des, double dt);
     void on_transition();
     void reset_parameters();
     void update_joint_states(double loop_time);
+
+    double get_p_des(){return p_des_;};
+    double get_v_des(){return v_des_;};
 
     // trajectory time from of joint in seconds
     double joint_time_;
@@ -91,48 +95,51 @@ public:
     std::string joint_name_;
 
     // pointer to force
-    std::shared_ptr<float> force_;
+    std::shared_ptr<double> force_;
 
     // configurable parameters
-    float noise_thresh_;
-    float target_force_;
+    double noise_thresh_;
+    double target_force_;
 
-    float init_k_;
+    double init_k_;
 
-    float min_vel_;
+    double min_vel_;
 
-    float K_p_;
-    float K_i_;
+    double K_p_;
+    double K_i_;
 
-    float max_error_int_;
-    int f_error_window_;
+    double max_error_int_;
+    unsigned int f_error_window_;
 
     // internal parameters
     int vel_limit_ = 0;
     int force_n_ = 0;
 
-    std::deque<float> f_error_queue_;
-    float error_integral_;
+    std::deque<double> f_error_queue_;
+    double error_integral_;
 
-    float f_error_integral_;
+    double f_error_integral_;
 
-    float last_force_;
+    double last_force_;
 
-    float k_;
-    float p_;
+    double k_;
+    double p_;
 
-    float force_T_;
-    float p_T_;
+    double p_des_;
+    double v_des_;
 
-    float delta_F_;
-    float delta_p_;
-    float delta_p_T_;
+    double force_T_;
+    double p_T_;
 
-    float delta_p_vel_;
-    float delta_p_force_;
+    double delta_F_;
+    double delta_p_;
+    double delta_p_T_;
 
-    float des_vel_;
-    float last_des_p_;
+    double delta_p_vel_;
+    double delta_p_force_;
+
+    double des_vel_;
+    double last_des_p_;
 
     SENSOR_STATE sensor_state_;
     SENSOR_STATE last_sensor_state_;
