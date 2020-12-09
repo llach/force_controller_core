@@ -5,8 +5,8 @@ namespace fcc {
 JointForceController::JointForceController(
         std::string joint_name,
         std::shared_ptr<float> force,
-        float target_force,
         float noise_thresh,
+        float target_force,
         float init_k,
         float min_vel,
         float K_p,
@@ -15,8 +15,8 @@ JointForceController::JointForceController(
         int f_error_window):
     joint_name_(joint_name),
     force_(force),
-    target_force_(target_force),
     noise_thresh_(noise_thresh),
+    target_force_(target_force),
     init_k_(init_k),
     min_vel_(min_vel),
     K_p_(K_p),
