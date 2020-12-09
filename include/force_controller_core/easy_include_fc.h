@@ -26,7 +26,9 @@ using force_controller::ForceTrajectoryController<TactileSensors>::num_sensors_;
 
 using force_controller::ForceTrajectoryController<TactileSensors>::K_p_;
 using force_controller::ForceTrajectoryController<TactileSensors>::K_i_;
+
 using force_controller::ForceTrajectoryController<TactileSensors>::error_integral_;
+using force_controller::ForceTrajectoryController<TactileSensors>::f_error_integral_;
 
 using force_controller::ForceTrajectoryController<TactileSensors>::NOISE_THRESH;
 

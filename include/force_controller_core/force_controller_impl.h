@@ -157,6 +157,11 @@ namespace force_controller {
       forces_T_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
       pos_T_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
 
+      error_integral_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
+
+      f_error_queue_.erase(f_error_queue_.begin(), f_error_queue_.end());
+      f_error_integral_ = 0.0;
+
       delta_F_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
       delta_p_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
       delta_p_T_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
@@ -167,17 +172,14 @@ namespace force_controller {
       des_vel_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
       last_des_p_ = std::make_shared<std::vector<float>>(num_sensors_, 0.0);
 
-      error_integral_ = 0.0;
-      force_n_ = 1;
-
       for (int j = 0; j < forces_->size(); j++){
         (*last_forces_)[j] = 0.0;
         (*forces_)[j] = 0.0;
       }
 
-      for (auto &t : joint_times_)
-        t = time_data_.readFromRT()->uptime;
-    }
+       for (auto &t : joint_times_)
+          t = time_data_.readFromRT()->uptime;
+      }
 
     template <class TactileSensors>
     inline void ForceTrajectoryController<TactileSensors>::update(const ros::Time& time, const ros::Duration& period) {
@@ -281,30 +283,38 @@ namespace force_controller {
             float state_err = current_state_.position[i] - desired_state_.position[i];
 
             typename TrajectoryPerJoint::const_iterator segment_it;
-            if (c_state_ > TRANSITION && std::abs((*forces_)[i]) > NOISE_THRESH) {
+            if (c_state_ > TRANSITION) {
                 ROS_INFO_STREAM_NAMED(name_, "IN FC " << i);
 
                 // prevent integral from exploding
-                if (error_integral_ < max_error_int_){
-                  error_integral_ += state_err;
+                if ((*error_integral_)[i] < max_error_int_){
+                  (*error_integral_)[i] += state_err;
                 }
 
-              (*delta_p_T_)[i] = ((*pos_T_)[i] - current_state_.position[i]);
+                (*delta_p_T_)[i] = ((*pos_T_)[i] - current_state_.position[i]);
 
                 // estimate k
-                double k_bar_t = (*forces_)[i] / (*delta_p_T_)[i];
-                if (!std::isinf(k_bar_t)){
-                    (*k_)[i] = (1-lambda_)*k_bar_t + lambda_*(*k_)[i];
-                }
+//                double k_bar_t = (*forces_)[i] / (*delta_p_T_)[i];
+//                k_bar_t = std::max(k_bar_t, 10000.0);
+
+//                if (!std::isinf(k_bar_t)){
+//                    (*k_)[i] = lambda_*k_bar_t + (1-lambda_)*(*k_)[i];
+//                }
 
                 // calculate new desired position
                 double f_des = (*max_forces_)[i] - std::abs((*forces_)[i]);
                 double delta_p_force = (f_des / (*k_)[i]);
                 (*delta_F_)[i] = f_des;
 
+                if (f_error_queue_.size() > f_error_window_)
+                  f_error_queue_.pop_back();
+
+              f_error_queue_.push_front(delta_p_force);
+              f_error_integral_ = std::accumulate(f_error_queue_.begin(), f_error_queue_.end(), 0.0);
+
                 // --> use PI[D] controller here
                 double delta_p_max = K_p_ * (min_vel_ * period.toSec());
-                delta_p_max += K_i_ * error_integral_;
+                delta_p_max += K_i_ * (*error_integral_)[i];
 
                 // enforce velocity limits
                 if (std::abs(delta_p_force) > std::abs(delta_p_max)){

@@ -43,6 +43,9 @@
 
 #include <joint_trajectory_controller/joint_trajectory_segment.h>
 
+#include <deque>
+#include <numeric>
+
 namespace force_controller {
 
     template <class TactileSensors>
@@ -92,10 +95,15 @@ protected:
 
     float K_p_ = 5;
     float K_i_ = 0.001;
-    float error_integral_ = 0.0;
     float max_error_int_ = 1.1;
 
-    float init_k_ = 1;
+    int f_error_window_ = 200;
+    std::deque<double> f_error_queue_;
+
+    float init_k_ = 875;
+
+    std::shared_ptr<std::vector<float>> error_integral_;
+    double f_error_integral_;
 
     std::shared_ptr<std::vector<float>> forces_;
     std::shared_ptr<std::vector<float>> max_forces_;
