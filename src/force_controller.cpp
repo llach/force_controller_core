@@ -25,7 +25,7 @@ JointForceController::JointForceController(
     f_error_window_(f_error_window)
     {}
 
-void JointForceController::reset_parameters(){
+void JointForceController::reset_parameters(double time){
   sensor_state_ = SENSOR_STATE::NO_CONTACT;
   last_sensor_state_ = SENSOR_STATE::NO_CONTACT;
 
@@ -52,7 +52,7 @@ void JointForceController::reset_parameters(){
 
   last_force_ = 0.0;
 
-  joint_time_ = 0.0;
+  joint_time_ = time;
 }
 
 void JointForceController::update_joint_states(double dt){

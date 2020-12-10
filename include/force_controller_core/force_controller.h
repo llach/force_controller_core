@@ -79,7 +79,7 @@ public:
 
     void calculate(double p, double last_p_des, double dt);
     void on_transition();
-    void reset_parameters();
+    void reset_parameters(double time);
     void finish_iteration();
     void update_joint_states(double loop_time);
 
