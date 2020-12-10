@@ -1,7 +1,5 @@
 # Force Controller Template
 
-[toc]
-
 This repoistory contains platform- and Middleware-independent code for a Joint Force Controller. It maintaines an internal joint state and trajectory sample time. As this class is controlling one joint only, a  higher-level controller needs to manage the controller ensemble consisting of one controller instance per joint.
 
 ### Methods
