@@ -53,12 +53,12 @@ enum CONTROLLER_STATE {TRAJECTORY_EXEC, TRANSITION, FORCE_CTRL};
 enum SENSOR_STATE {NO_CONTACT, LOST_CONTACT, GOT_CONTACT, IN_CONTACT, GOAL, VIOLATED};
 
 std::map<SENSOR_STATE, std::string> STATE_STRING = {
-        {NO_CONTACT, "no contact"},
-        {GOT_CONTACT, "got contact"},
-        {LOST_CONTACT, "lost contact"},
-        {IN_CONTACT, "still in contact"},
-        {GOAL, "reached goal"},
-        {VIOLATED, "violated goal constraints"}
+    {NO_CONTACT, "no contact"},
+    {GOT_CONTACT, "got contact"},
+    {LOST_CONTACT, "lost contact"},
+    {IN_CONTACT, "still in contact"},
+    {GOAL, "reached goal"},
+    {VIOLATED, "violated goal constraints"}
 };
 
 class JointForceController

@@ -8,33 +8,73 @@ else ()
     set(CMAKE_CXX_STANDARD 14)
 endif ()
 
-find_package(catkin REQUIRED COMPONENTS
-        roscpp
-        )
+SET(YARP FALSE CACHE BOOL "YARP")
 
-catkin_package(
-        CATKIN_DEPENDS
-        INCLUDE_DIRS include
-        LIBRARIES ${PROJECT_NAME}
-)
+if (NOT ${YARP})
+    message("----Force controller running with ROS----")
+    find_package(catkin REQUIRED COMPONENTS
+            roscpp
+            )
 
-include_directories(${catkin_INCLUDE_DIRS})
+    catkin_package(
+            CATKIN_DEPENDS
+            INCLUDE_DIRS include
+            LIBRARIES ${PROJECT_NAME}
+    )
 
-add_library(${PROJECT_NAME}
-        include/force_controller_core/force_controller.h
-        src/force_controller.cpp
-        )
+    include_directories(${catkin_INCLUDE_DIRS})
 
-target_include_directories(${PROJECT_NAME}
-        PUBLIC include/
-        PUBLIC ${catkin_INCLUDE_DIRS}
-        )
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
+    add_library(${PROJECT_NAME}
+            include/force_controller_core/force_controller.h
+            src/force_controller.cpp
+            )
 
-# Install
-install(DIRECTORY include/ DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION})
+    target_include_directories(${PROJECT_NAME}
+            PUBLIC include/
+            PUBLIC ${catkin_INCLUDE_DIRS}
+            )
+    target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+    add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
-install(TARGETS ${PROJECT_NAME}
-        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+    # Install
+    install(DIRECTORY include/ DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION})
+
+    install(TARGETS ${PROJECT_NAME}
+            ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+            LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+else ()
+    message("----Force controller running with YARP----")
+
+    include_directories(include/)
+
+    include(GNUInstallDirs)
+
+    if(NOT CMAKE_CONFIGURATION_TYPES)
+        if(NOT CMAKE_BUILD_TYPE)
+            message(STATUS "Setting build type to 'Release' as none was specified.")
+            set_property(CACHE CMAKE_BUILD_TYPE PROPERTY VALUE "Release")
+        endif()
+    endif()
+
+    find_package(YARP COMPONENTS os sig math dev REQUIRED)
+
+    add_library(${PROJECT_NAME}
+            include/force_controller_core/force_controller.h
+            src/force_controller.cpp
+            )
+
+    target_include_directories(${PROJECT_NAME} PUBLIC /force_controller_core/include)
+
+    target_link_libraries(${PROJECT_NAME}
+                            PUBLIC
+                            /force_controller_core/build/libforce_controller_core.a
+                            PRIVATE YARP::YARP_os
+                                    YARP::YARP_init
+                                    YARP::YARP_dev
+                                    YARP::YARP_math
+                                    YARP::YARP_sig)
+
+                                # you can specify the CMAKE_INSTALL_BINDIR adding -DCMAKE_INSTALL_PREFIX=/path at the cmake .. command
+                                install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+endif ()
