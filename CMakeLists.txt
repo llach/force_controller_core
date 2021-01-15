@@ -8,9 +8,14 @@ else ()
     set(CMAKE_CXX_STANDARD 14)
 endif ()
 
+
 SET(YARP FALSE CACHE BOOL "YARP")
 
 if (NOT ${YARP})
+=======
+SET(ROS TRUE CACHE BOOL "ROS")
+
+if (${ROS})
     message("----Force controller running with ROS----")
     find_package(catkin REQUIRED COMPONENTS
             roscpp
@@ -58,6 +63,11 @@ else ()
 
     find_package(YARP COMPONENTS os sig math dev REQUIRED)
 
+=======
+    message("----Force controller without ROS")
+
+    include_directories(include/)
+
     add_library(${PROJECT_NAME}
             include/force_controller_core/force_controller.h
             src/force_controller.cpp
@@ -76,5 +86,19 @@ else ()
 
                                 # you can specify the CMAKE_INSTALL_BINDIR adding -DCMAKE_INSTALL_PREFIX=/path at the cmake .. command
                                 install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
+=======
+    target_link_libraries(${PROJECT_NAME}  PUBLIC /force_controller_core/build/libforce_controller_core.a)
+
+    install(
+        TARGETS ${PROJECT_NAME}
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        COMPONENT library
+    )
+
+    install(
+        DIRECTORY include/force_controller_core
+        DESTINATION include
+    )
 
 endif ()
