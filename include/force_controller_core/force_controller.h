@@ -80,7 +80,7 @@ public:
     void on_transition();
     void reset_parameters(double time);
     void finish_iteration();
-    void update_joint_states(double loop_time);
+    void update_joint_states(double loop_time, bool force_update_time = true);
 
     double get_p_des(){return p_des_;};
     double get_v_des(){return v_des_;};

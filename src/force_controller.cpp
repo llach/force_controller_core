@@ -55,7 +55,7 @@ void JointForceController::reset_parameters(double time){
   joint_time_ = time;
 }
 
-void JointForceController::update_joint_states(double dt){
+void JointForceController::update_joint_states(double dt, bool force_update_time){
   if (sensor_state_ < GOAL) { // if a joint has reached it's goal, we don't change sensor_state_s anymore
     if (std::abs(last_force_) <= noise_thresh_ && std::abs(*force_) > noise_thresh_) {
       sensor_state_ = GOT_CONTACT;
@@ -64,7 +64,7 @@ void JointForceController::update_joint_states(double dt){
     }
 
     // no contact -> follow trajectory
-    if (sensor_state_ == NO_CONTACT) {
+    if (sensor_state_ == NO_CONTACT || force_update_time) {
       // proceeding like this could cause jerking joints. better: find joint_t which is closest to current joint_val and continue from there
       joint_time_ += dt;
     }
