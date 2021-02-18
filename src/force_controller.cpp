@@ -8,7 +8,7 @@ JointForceController::JointForceController(
         double noise_thresh,
         double target_force,
         double init_k,
-        double min_vel,
+        double max_vel,
         double K_p,
         double K_i,
         double max_error_int,
@@ -18,11 +18,10 @@ JointForceController::JointForceController(
     noise_thresh_(noise_thresh),
     target_force_(target_force),
     init_k_(init_k),
-    min_vel_(min_vel),
+    max_vel_(max_vel),
     K_p_(K_p),
     K_i_(K_i),
-    max_error_int_(max_error_int),
-    f_error_window_(f_error_window)
+    max_error_int_(max_error_int)
     {}
 
 void JointForceController::reset_parameters(double time){
@@ -37,9 +36,6 @@ void JointForceController::reset_parameters(double time){
   v_des_ = 0.0;
 
   error_integral_ = 0.0;
-
-  f_error_queue_.erase(f_error_queue_.begin(), f_error_queue_.end());
-  f_error_integral_ = 0.0;
 
   delta_F_ = 0.0;
   delta_p_ = 0.0;
@@ -79,43 +75,34 @@ void JointForceController::on_transition() {
 void JointForceController::calculate(double p, double last_p_des, double dt){
   double state_err = p - last_p_des;
 
-  // prevent integral from exploding
-  if (error_integral_ < max_error_int_){
-    error_integral_ += state_err;
-  }
-
   delta_p_T_ = (p_T_ - p);
-
-  // estimate k
-//  double k_bar_t = forces_ / delta_p_T_;
-//  k_bar_t = std::max(k_bar_t, 10000.0);
-//
-//  if (!std::isinf(k_bar_t)){
-//      k_ = lambda_*k_bar_t + (1-lambda_)*k_;
-//  }
 
   // calculate new desired position
   double f_des = target_force_ - std::abs(*force_);
   double delta_p_force = (f_des / k_);
   delta_F_ = f_des;
 
-  if (f_error_queue_.size() > f_error_window_)
-    f_error_queue_.pop_back();
-
-  f_error_queue_.push_front(delta_p_force);
-  f_error_integral_ = std::accumulate(f_error_queue_.begin(), f_error_queue_.end(), 0.0);
+  int delta_p_sign = -1 ? delta_p_force < 0 : 1;
 
   // --> use PI[D] controller here
-  double delta_p_max = K_p_ * (min_vel_ * dt);
-  delta_p_max += K_i_ * error_integral_;
+  double delta_p_max = max_vel_;
 
   // enforce velocity limits
   vel_limit_ = 0;
-  if (std::abs(delta_p_force) > std::abs(delta_p_max)){
+
+  double p_bar = 0;
+  if (std::abs(delta_p_force) > delta_p_max){
     vel_limit_ = 1;
-    delta_p_ = delta_p_max;
+    p_bar = delta_p_max;
   } else {
-    delta_p_ = delta_p_force;
+    p_bar = std::abs(delta_p_force);
+  }
+
+  delta_p_ = K_p_ * p_bar + K_i_ * error_integral_;
+
+  // prevent integral from exploding
+  if (error_integral_ < max_error_int_){
+    error_integral_ += p_bar * dt;
   }
 
   // store debug info

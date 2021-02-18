@@ -69,7 +69,7 @@ public:
             double noise_thresh = 0.0,
             double target_force = 1.0,
             double init_k = 1,
-            double min_vel = 0.01,
+            double max_vel = 0.01,
             double K_p = 1,
             double K_i = 0.001,
             double max_error_int = 1.1,
@@ -103,22 +103,18 @@ public:
 
     double init_k_;
 
-    double min_vel_;
+    double max_vel_;
 
     double K_p_;
     double K_i_;
 
     double max_error_int_;
-    unsigned int f_error_window_;
 
     // internal parameters
     int vel_limit_ = 0;
     int force_n_ = 0;
 
-    std::deque<double> f_error_queue_;
     double error_integral_;
-
-    double f_error_integral_;
 
     double last_force_;
 
