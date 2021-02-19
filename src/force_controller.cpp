@@ -8,20 +8,15 @@ JointForceController::JointForceController(
         double noise_thresh,
         double target_force,
         double init_k,
-        double max_vel,
         double K_p,
-        double K_i,
-        double max_error_int,
-        unsigned int f_error_window):
+        double K_i):
     joint_name_(joint_name),
     force_(force),
     noise_thresh_(noise_thresh),
     target_force_(target_force),
     init_k_(init_k),
-    max_vel_(max_vel),
     K_p_(K_p),
-    K_i_(K_i),
-    max_error_int_(max_error_int)
+    K_i_(K_i)
     {}
 
 void JointForceController::reset_parameters(double time){
@@ -40,9 +35,6 @@ void JointForceController::reset_parameters(double time){
   delta_F_ = 0.0;
   delta_p_ = 0.0;
   delta_p_T_ = 0.0;
-
-  delta_p_vel_ = 0.0;
-  delta_p_force_ = 0.0;
   
   last_p_des_ = 0.0;
 
@@ -72,42 +64,15 @@ void JointForceController::on_transition() {
   p_T_ = p_;
 }
 
-void JointForceController::calculate(double p, double last_p_des, double dt){
-  double state_err = p - last_p_des;
-
+void JointForceController::calculate(double p, double dt){
   delta_p_T_ = (p_T_ - p);
 
   // calculate new desired position
-  double f_des = target_force_ - std::abs(*force_);
-  double delta_p_force = (f_des / k_);
-  delta_F_ = f_des;
+  delta_F_ = target_force_ - *force_;
+  double delta_p_force = (delta_F_ / k_);
 
-  int delta_p_sign = -1 ? delta_p_force < 0 : 1;
-
-  // --> use PI[D] controller here
-  double delta_p_max = max_vel_;
-
-  // enforce velocity limits
-  vel_limit_ = 0;
-
-  double p_bar = 0;
-  if (std::abs(delta_p_force) > delta_p_max){
-    vel_limit_ = 1;
-    p_bar = delta_p_max;
-  } else {
-    p_bar = std::abs(delta_p_force);
-  }
-
-  delta_p_ = K_p_ * p_bar + K_i_ * error_integral_;
-
-  // prevent integral from exploding
-  if (error_integral_ < max_error_int_){
-    error_integral_ += p_bar * dt;
-  }
-
-  // store debug info
-  delta_p_vel_ = std::abs(delta_p_max);
-  delta_p_force_ = std::abs(delta_p_force);
+  error_integral_ += delta_p_force * dt;
+  delta_p_ = K_p_ * delta_p_force + K_i_ * error_integral_;
 
   // calculate new position and velocity
   p_des_ = p - delta_p_;

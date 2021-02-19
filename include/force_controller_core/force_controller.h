@@ -69,14 +69,11 @@ public:
             double noise_thresh = 0.0,
             double target_force = 1.0,
             double init_k = 1,
-            double max_vel = 0.01,
             double K_p = 1,
-            double K_i = 0.001,
-            double max_error_int = 1.1,
-            unsigned int f_error_window = 200
+            double K_i = 0.001
             );
 
-    void calculate(double p, double last_p_des, double dt);
+    void calculate(double p, double dt);
     void on_transition();
     void reset_parameters(double time);
     void finish_iteration();
@@ -103,20 +100,12 @@ public:
 
     double init_k_;
 
-    double max_vel_;
-
     double K_p_;
     double K_i_;
 
-    double max_error_int_;
-
     // internal parameters
-    int vel_limit_ = 0;
-    int force_n_ = 0;
-
-    double error_integral_;
-
     double last_force_;
+    double error_integral_;
 
     double k_;
     double p_;
@@ -130,9 +119,6 @@ public:
     double delta_F_;
     double delta_p_;
     double delta_p_T_;
-
-    double delta_p_vel_;
-    double delta_p_force_;
 
     double last_p_des_;
 
