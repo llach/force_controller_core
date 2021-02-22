@@ -70,7 +70,8 @@ public:
             double target_force = 1.0,
             double init_k = 1,
             double K_p = 1,
-            double K_i = 0.001
+            double K_i = 0.001,
+            bool closing_decrease = true
             );
 
     void calculate(double p, double dt);
@@ -121,6 +122,8 @@ public:
     double delta_q_T_;
 
     double last_q_des_;
+
+    signed short closing_factor_;
 
     SENSOR_STATE sensor_state_;
     SENSOR_STATE last_sensor_state_;

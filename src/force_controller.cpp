@@ -9,15 +9,17 @@ JointForceController::JointForceController(
         double target_force,
         double init_k,
         double K_p,
-        double K_i):
+        double K_i,
+        bool closing_decrease):
     joint_name_(joint_name),
     force_(force),
     noise_thresh_(noise_thresh),
     target_force_(target_force),
     init_k_(init_k),
     K_p_(K_p),
-    K_i_(K_i)
-    {}
+    K_i_(K_i) {
+    closing_factor_ = closing_decrease ? -1 : 1;
+    }
 
 void JointForceController::reset_parameters(double time){
   sensor_state_ = SENSOR_STATE::NO_CONTACT;
@@ -75,7 +77,7 @@ void JointForceController::calculate(double q, double dt){
   delta_q_ = K_p_ * delta_q_force + K_i_ * error_integral_;
 
   // calculate new position and velocity
-  q_des_ = q - delta_q_;
+  q_des_ = q + closing_factor_ * delta_q_;
   v_des_ = (q_des_ - last_q_des_) / dt;
 }
 
