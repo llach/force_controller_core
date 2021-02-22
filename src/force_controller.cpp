@@ -25,18 +25,18 @@ void JointForceController::reset_parameters(double time){
 
   k_ = init_k_;
   force_T_ = 0.0;
-  p_T_ = 0.0;
+  q_T_ = 0.0;
 
-  p_des_ = 0.0;
+  q_des_ = 0.0;
   v_des_ = 0.0;
 
   error_integral_ = 0.0;
 
   delta_F_ = 0.0;
-  delta_p_ = 0.0;
-  delta_p_T_ = 0.0;
+  delta_q_ = 0.0;
+  delta_q_T_ = 0.0;
   
-  last_p_des_ = 0.0;
+  last_q_des_ = 0.0;
 
   last_force_ = 0.0;
 
@@ -61,28 +61,28 @@ void JointForceController::update_joint_states(double dt, bool force_update_time
 
 void JointForceController::on_transition() {
   force_T_ = *force_;
-  p_T_ = p_;
+  q_T_ = q_;
 }
 
-void JointForceController::calculate(double p, double dt){
-  delta_p_T_ = (p_T_ - p);
+void JointForceController::calculate(double q, double dt){
+  delta_q_T_ = (q_T_ - q);
 
   // calculate new desired position
   delta_F_ = target_force_ - *force_;
-  double delta_p_force = (delta_F_ / k_);
+  double delta_q_force = (delta_F_ / k_);
 
-  error_integral_ += delta_p_force * dt;
-  delta_p_ = K_p_ * delta_p_force + K_i_ * error_integral_;
+  error_integral_ += delta_q_force * dt;
+  delta_q_ = K_p_ * delta_q_force + K_i_ * error_integral_;
 
   // calculate new position and velocity
-  p_des_ = p - delta_p_;
-  v_des_ = (p_des_ - last_p_des_) / dt;
+  q_des_ = q - delta_q_;
+  v_des_ = (q_des_ - last_q_des_) / dt;
 }
 
 void JointForceController::finish_iteration(){
     last_force_ = *force_;
     last_sensor_state_ = sensor_state_;
-    last_p_des_ = p_des_;
+    last_q_des_ = q_des_;
 }
 
 } // fcc

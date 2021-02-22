@@ -79,7 +79,7 @@ public:
     void finish_iteration();
     void update_joint_states(double loop_time, bool force_update_time = true);
 
-    double get_p_des(){return p_des_;};
+    double get_q_des(){return q_des_;};
     double get_v_des(){return v_des_;};
 
     // trajectory time from of joint in seconds
@@ -108,19 +108,19 @@ public:
     double error_integral_;
 
     double k_;
-    double p_;
+    double q_;
 
-    double p_des_;
+    double q_des_;
     double v_des_;
 
     double force_T_;
-    double p_T_;
+    double q_T_;
 
     double delta_F_;
-    double delta_p_;
-    double delta_p_T_;
+    double delta_q_;
+    double delta_q_T_;
 
-    double last_p_des_;
+    double last_q_des_;
 
     SENSOR_STATE sensor_state_;
     SENSOR_STATE last_sensor_state_;
