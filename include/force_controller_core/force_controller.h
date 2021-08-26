@@ -83,6 +83,8 @@ public:
     double get_q_des(){return q_des_;};
     double get_v_des(){return v_des_;};
 
+    void set_q(double q){q_ = q;};
+
     // trajectory time from of joint in seconds
     double joint_time_;
 
