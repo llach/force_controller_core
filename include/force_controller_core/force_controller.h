@@ -68,6 +68,7 @@ public:
             std::shared_ptr<double> force,
             double noise_thresh = 0.0,
             double target_force = 1.0,
+            double max_error = 0.00027,
             double init_k = 1,
             double K_p = 1,
             double K_i = 0.001,
@@ -101,11 +102,12 @@ public:
     double noise_thresh_;
     double target_force_;
 
+    double max_error_;
     double init_k_;
 
     double K_p_;
-    double K_i_;
 
+    double K_i_;
     // internal parameters
     double last_force_;
     double error_integral_;

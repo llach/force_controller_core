@@ -7,6 +7,7 @@ JointForceController::JointForceController(
         std::shared_ptr<double> force,
         double noise_thresh,
         double target_force,
+        double max_error,
         double init_k,
         double K_p,
         double K_i,
@@ -15,6 +16,7 @@ JointForceController::JointForceController(
     force_(force),
     noise_thresh_(noise_thresh),
     target_force_(target_force),
+    max_error_(max_error),
     init_k_(init_k),
     K_p_(K_p),
     K_i_(K_i) {
@@ -74,6 +76,8 @@ void JointForceController::calculate(double q, double dt){
   double delta_q_force = (delta_F_ / k_);
 
   error_integral_ += delta_q_force * dt;
+  if (error_integral_ > max_error_)
+    error_integral_ = max_error_;
   delta_q_ = K_p_ * delta_q_force + K_i_ * error_integral_;
 
   // calculate new position and velocity
